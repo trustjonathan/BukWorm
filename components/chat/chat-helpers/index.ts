@@ -401,9 +401,13 @@ export const handleCreateMessages = async (
   setChatImages: React.Dispatch<React.SetStateAction<MessageImage[]>>,
   selectedAssistant: Tables<"assistants"> | null,
   assistantResponses?: { modelData: LLM; generatedText: string }[],
-  userModelId?: LLMID
+  userModelId?: LLMID,
+  /** parent_id for the user message — used for threaded replies */
+  parentId?: string | null
 ) => {
-  const finalUserMessage: TablesInsert<"messages"> = {
+  const finalUserMessage: TablesInsert<"messages"> & {
+    parent_id?: string | null
+  } = {
     chat_id: currentChat.id,
     assistant_id: null,
     user_id: profile.user_id,
@@ -411,7 +415,8 @@ export const handleCreateMessages = async (
     model: userModelId || modelData.modelId,
     role: "user",
     sequence_number: chatMessages.length,
-    image_paths: []
+    image_paths: [],
+    ...(parentId !== undefined && { parent_id: parentId })
   }
 
   const responses = assistantResponses?.length

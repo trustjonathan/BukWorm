@@ -473,7 +473,9 @@ export const useChatHandler = () => {
     messageContent: string,
     chatMessages: ChatMessage[],
     isRegeneration: boolean,
-    agentIds?: NexusAgentId[]
+    agentIds?: NexusAgentId[],
+    /** parent_id for threaded branch replies */
+    parentId?: string | null
   ) => {
     if (agentIds !== undefined) {
       return handleSendToNexusAgents(messageContent, chatMessages, agentIds)
@@ -663,7 +665,10 @@ export const useChatHandler = () => {
         setChatMessages,
         setChatFileItems,
         setChatImages,
-        selectedAssistant
+        selectedAssistant,
+        undefined, // assistantResponses
+        undefined, // userModelId
+        parentId ?? null
       )
 
       setIsGenerating(false)

@@ -1,0 +1,346 @@
+Data Schema (types/chat.ts)
+Each message tracks its parent ID (parentId) and any child responses (replyIds) so you can render infinite or single-level nested branches.
+
+TypeScript
+export interface MessageNode {
+  id: string;
+  parentId: string | null; // null for top-level root messages
+  sender: 'user' | 'agent';
+  authorName: string;
+  avatarUrl: string;
+  content: string;
+  timestamp: string;
+  likes: number;
+  userLiked?: boolean;
+  replies?: MessageNode[];
+}
+2. The Threaded Node Component (components/ThreadedMessage.tsx)
+This component renders the straight node vertical lines, node dots, action buttons (Like, Reply, Share), and nested sub-threads.
+
+TypeScript
+import React, { useState } from 'react';
+import { ThumbsUp, MessageSquare, CornerDownRight, Send } from 'lucide-react';
+import { MessageNode } from '../types/chat';
+
+interface ThreadedMessageProps {
+  node: MessageNode;
+  onSendReply: (parentId: string, text: string) => void;
+  onLike: (id: string) => void;
+  isLastNode?: boolean;
+}
+
+export const ThreadedMessage: React.FC<ThreadedMessageProps> = ({
+  node,
+  onSendReply,
+  onLike,
+  isLastNode = false,
+}) => {
+  const [isReplying, setIsReplying] = useState(false);
+  const [replyText, setReplyText] = useState('');
+  const [showReplies, setShowReplies] = useState(true);
+
+  const handleReplySubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!replyText.trim()) return;
+    onSendReply(node.id, replyText);
+    setReplyText('');
+    setIsReplying(false);
+  };
+
+  const isAgent = node.sender === 'agent';
+
+  return (
+    <div className="relative flex gap-4 text-slate-100 font-sans">
+      {/* LEFT CONNECTOR COLUMN */}
+      <div className="relative flex flex-col items-center">
+        {/* Node Avatar Icon Dot */}
+        <div
+          className={`z-10 flex h-10 w-10 shrink-0 items-center justify-center rounded-full border-2 bg-slate-900 shadow-md ${
+            isAgent
+              ? 'border-cyan-400 text-cyan-400 shadow-cyan-500/20'
+              : 'border-orange-500 text-orange-500 shadow-orange-500/20'
+          }`}
+        >
+          <img
+            src={node.avatarUrl}
+            alt={node.authorName}
+            className="h-full w-full rounded-full object-cover"
+          />
+        </div>
+
+        {/* Straight Vertical Linking Line */}
+        {!isLastNode && (
+          <div className="w-[2px] grow bg-slate-800 transition-colors duration-300 group-hover:bg-cyan-500/50" />
+        )}
+      </div>
+
+      {/* RIGHT CONTENT COLUMN */}
+      <div className="flex-1 pb-6">
+        {/* Header (Author + Timestamp) */}
+        <div className="flex items-baseline gap-2">
+          <span className="font-semibold text-sm text-slate-200">
+            {node.authorName}
+          </span>
+          {isAgent && (
+            <span className="rounded bg-cyan-950 px-1.5 py-0.5 text-[10px] font-mono text-cyan-400 border border-cyan-800">
+              AGENT NODE
+            </span>
+          )}
+          <span className="text-xs text-slate-500">{node.timestamp}</span>
+        </div>
+
+        {/* Message Text */}
+        <div className="mt-1 text-sm text-slate-300 leading-relaxed bg-slate-900/60 p-3 rounded-lg border border-slate-800/80 shadow-sm">
+          {node.content}
+        </div>
+
+        {/* Action Toolbar (Likes, Comment/Reply) */}
+        <div className="mt-2 flex items-center gap-4 text-xs text-slate-400">
+          <button
+            onClick={() => onLike(node.id)}
+            className={`flex items-center gap-1 hover:text-cyan-400 transition-colors ${
+              node.userLiked ? 'text-cyan-400 font-medium' : ''
+            }`}
+          >
+            <ThumbsUp className="h-3.5 w-3.5" />
+            <span>{node.likes}</span>
+          </button>
+
+          <button
+            onClick={() => setIsReplying(!isReplying)}
+            className="flex items-center gap-1 hover:text-cyan-400 transition-colors"
+          >
+            <MessageSquare className="h-3.5 w-3.5" />
+            <span>Reply</span>
+          </button>
+
+          {node.replies && node.replies.length > 0 && (
+            <button
+              onClick={() => setShowReplies(!showReplies)}
+              className="text-cyan-400 hover:underline text-xs ml-auto font-mono"
+            >
+              {showReplies ? 'Hide Context' : `Show ${node.replies.length} replies`}
+            </button>
+          )}
+        </div>
+
+        {/* Inline Reply Input Box (Appears when user clicks "Reply") */}
+        {isReplying && (
+          <form
+            onSubmit={handleReplySubmit}
+            className="mt-3 flex items-center gap-2 pl-2 border-l-2 border-cyan-500/50"
+          >
+            <CornerDownRight className="h-4 w-4 text-cyan-400 shrink-0" />
+            <input
+              type="text"
+              value={replyText}
+              onChange={(e) => setReplyText(e.target.value)}
+              placeholder={`Reply in thread with ${node.authorName}...`}
+              className="flex-1 bg-slate-950 border border-slate-800 rounded-md px-3 py-1.5 text-xs text-slate-100 focus:outline-none focus:border-cyan-500"
+              autoFocus
+            />
+            <button
+              type="submit"
+              className="bg-cyan-600 hover:bg-cyan-500 text-slate-950 px-3 py-1.5 rounded-md text-xs font-semibold flex items-center gap-1 transition-colors"
+            >
+              <Send className="h-3 w-3" />
+              <span>Send</span>
+            </button>
+          </form>
+        )}
+
+        {/* NESTED SUB-THREAD BRANCHES */}
+        {showReplies && node.replies && node.replies.length > 0 && (
+          <div className="mt-4 pl-4 border-l-2 border-slate-800/80 space-y-4">
+            {node.replies.map((subNode, index) => (
+              <ThreadedMessage
+                key={subNode.id}
+                node={subNode}
+                onSendReply={onSendReply}
+                onLike={onLike}
+                isLastNode={index === node.replies!.length - 1}
+              />
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+3. Main Workspace Feed Container (components/ChatWorkspace.tsx)
+This handles sending new top-level independent messages vs. contextual threaded replies to the agent.
+
+TypeScript
+import React, { useState } from 'react';
+import { Send } from 'lucide-react';
+import { ThreadedMessage } from './ThreadedMessage';
+import { MessageNode } from '../types/chat';
+
+export const ChatWorkspace: React.FC = () => {
+  const [messages, setMessages] = useState<MessageNode[]>([
+    {
+      id: '1',
+      parentId: null,
+      sender: 'user',
+      authorName: 'Jonathan',
+      avatarUrl: 'https://api.dicebear.com/7.x/bottts/svg?seed=Jonathan',
+      content: 'Send over a specific fraction you are working on, and we can solve it step-by-step!',
+      timestamp: '3 wk ago',
+      likes: 4200,
+      replies: [
+        {
+          id: '1-1',
+          parentId: '1',
+          sender: 'agent',
+          authorName: 'Gemini 1.5 Flash',
+          avatarUrl: 'https://api.dicebear.com/7.x/bottts/svg?seed=Gemini',
+          content: 'Here is an example: \\frac{3}{4} + \\frac{2}{5}. Let us find the LCM first.',
+          timestamp: '2 wk ago',
+          likes: 1100,
+          replies: [],
+        },
+      ],
+    },
+    {
+      id: '2',
+      parentId: null,
+      sender: 'user',
+      authorName: 'Jonathan',
+      avatarUrl: 'https://api.dicebear.com/7.x/bottts/svg?seed=Jonathan',
+      content: 'How is the going?',
+      timestamp: '16 hr ago',
+      likes: 128,
+      replies: [
+        {
+          id: '2-1',
+          parentId: '2',
+          sender: 'agent',
+          authorName: 'BukWorm AI',
+          avatarUrl: 'https://api.dicebear.com/7.x/bottts/svg?seed=BukWorm',
+          content: 'Everything is going great! Ready for the next topic.',
+          timestamp: '16 hr ago',
+          likes: 45,
+          replies: [],
+        },
+      ],
+    },
+  ]);
+
+  const [input, setInput] = useState('');
+
+  // Handle Likes
+  const handleLike = (id: string) => {
+    const updateLikes = (nodes: MessageNode[]): MessageNode[] => {
+      return nodes.map((node) => {
+        if (node.id === id) {
+          return {
+            ...node,
+            likes: node.userLiked ? node.likes - 1 : node.likes + 1,
+            userLiked: !node.userLiked,
+          };
+        }
+        if (node.replies) {
+          return { ...node, replies: updateLikes(node.replies) };
+        }
+        return node;
+      });
+    };
+    setMessages(updateLikes(messages));
+  };
+
+  // Handle Threaded Replies (Retains Context)
+  const handleSendReply = (parentId: string, replyText: string) => {
+    const newReply: MessageNode = {
+      id: Date.now().toString(),
+      parentId,
+      sender: 'user',
+      authorName: 'Jonathan',
+      avatarUrl: 'https://api.dicebear.com/7.x/bottts/svg?seed=Jonathan',
+      content: replyText,
+      timestamp: 'Just now',
+      likes: 0,
+      replies: [],
+    };
+
+    const addNestedReply = (nodes: MessageNode[]): MessageNode[] => {
+      return nodes.map((node) => {
+        if (node.id === parentId) {
+          return { ...node, replies: [...(node.replies || []), newReply] };
+        }
+        if (node.replies) {
+          return { ...node, replies: addNestedReply(node.replies) };
+        }
+        return node;
+      });
+    };
+
+    setMessages(addNestedReply(messages));
+  };
+
+  // Handle Main Input Submit (Starts NEW Independent Route)
+  const handleMainSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!input.trim()) return;
+
+    const newNode: MessageNode = {
+      id: Date.now().toString(),
+      parentId: null,
+      sender: 'user',
+      authorName: 'Jonathan',
+      avatarUrl: 'https://api.dicebear.com/7.x/bottts/svg?seed=Jonathan',
+      content: input,
+      timestamp: 'Just now',
+      likes: 0,
+      replies: [],
+    };
+
+    setMessages([...messages, newNode]);
+    setInput('');
+  };
+
+  return (
+    <div className="max-w-2xl mx-auto min-h-screen bg-slate-950 p-6 flex flex-col justify-between">
+      {/* TIMELINE FEED */}
+      <div className="space-y-2">
+        <h2 className="text-xs font-mono text-cyan-400 mb-6 uppercase tracking-wider">
+          Node Discussion Feed
+        </h2>
+        {messages.map((node, idx) => (
+          <ThreadedMessage
+            key={node.id}
+            node={node}
+            onSendReply={handleSendReply}
+            onLike={handleLike}
+            isLastNode={idx === messages.length - 1}
+          />
+        ))}
+      </div>
+
+      {/* MAIN INDEPENDENT INPUT BAR */}
+      <form
+        onSubmit={handleMainSubmit}
+        className="sticky bottom-4 mt-6 flex items-center gap-2 bg-slate-900 border border-slate-800 rounded-xl p-2 shadow-xl"
+      >
+        <input
+          type="text"
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          placeholder="Ask BukWorm anything (starts a new thread)..."
+          className="flex-1 bg-transparent px-3 py-2 text-sm text-slate-100 focus:outline-none placeholder:text-slate-500"
+        />
+        <button
+          type="submit"
+          className="bg-cyan-500 hover:bg-cyan-400 text-slate-950 p-2.5 rounded-lg transition-colors"
+        >
+          <Send className="h-4 w-4" />
+        </button>
+      </form>
+    </div>
+  );
+};
+Key Technical Highlights:
+Vertical Timeline Line: Achieved using a flex column layout where the node avatar sits at the top and grow bg-slate-800 renders a pixel-perfect straight connecting line to the next message.
+
+Context Retention (Threaded Replies): When you click Reply, the new message gets appended directly under that specific message node (parentId), maintaining a clear discussion subtree.
+
+Independent Routes (Main Input): Submitting a prompt via the bottom search/input bar creates a new root node (parentId: null), starting a fresh independent path on the vertical timeline.

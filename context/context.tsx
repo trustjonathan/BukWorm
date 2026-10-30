@@ -139,6 +139,11 @@ interface ChatbotUIContext {
   setSelectedTools: Dispatch<SetStateAction<Tables<"tools">[]>>
   toolInUse: string
   setToolInUse: Dispatch<SetStateAction<string>>
+
+  // THREADED CHAT STORE
+  /** The message id that the user is currently replying to in a branch. Null = root input. */
+  replyingToParentId: string | null
+  setReplyingToParentId: Dispatch<SetStateAction<string | null>>
 }
 
 export const ChatbotUIContext = createContext<ChatbotUIContext>({
@@ -266,5 +271,9 @@ export const ChatbotUIContext = createContext<ChatbotUIContext>({
   selectedTools: [],
   setSelectedTools: () => {},
   toolInUse: "none",
-  setToolInUse: () => {}
+  setToolInUse: () => {},
+
+  // THREADED CHAT STORE
+  replyingToParentId: null,
+  setReplyingToParentId: () => {}
 })
