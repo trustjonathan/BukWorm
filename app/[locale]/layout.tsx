@@ -12,10 +12,10 @@ import { ReactNode } from "react"
 import "./globals.css"
 
 const inter = Inter({ subsets: ["latin"] })
-const APP_NAME = "Chatbot UI"
-const APP_DEFAULT_TITLE = "Chatbot UI"
-const APP_TITLE_TEMPLATE = "%s - Chatbot UI"
-const APP_DESCRIPTION = "Chabot UI PWA!"
+const APP_NAME = "BukWorm"
+const APP_DEFAULT_TITLE = "BukWorm"
+const APP_TITLE_TEMPLATE = "%s - BukWorm"
+const APP_DESCRIPTION = "A thoughtful AI workspace, powered by Gemini."
 
 interface RootLayoutProps {
   children: ReactNode
@@ -61,7 +61,10 @@ export const metadata: Metadata = {
 }
 
 export const viewport: Viewport = {
-  themeColor: "#000000"
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#eff6ff" },
+    { media: "(prefers-color-scheme: dark)", color: "#080d1a" }
+  ]
 }
 
 const i18nNamespaces = ["translation"]
@@ -89,7 +92,7 @@ export default async function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={inter.className}>
-        <Providers attribute="class" defaultTheme="dark">
+        <Providers attribute="class" defaultTheme="system">
           <TranslationsProvider
             namespaces={i18nNamespaces}
             locale={locale}

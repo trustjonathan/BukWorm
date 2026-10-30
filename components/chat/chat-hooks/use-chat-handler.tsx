@@ -1,4 +1,12 @@
 import { ChatbotUIContext } from "@/context/context"
+import { DEFAULT_GOOGLE_MODEL_ID } from "@/lib/models/llm/google-llm-list"
+import {
+  getMentionedNexusAgents,
+  getNexusAgentModel,
+  NexusAgentId,
+  NEXUS_AGENTS,
+  stripNexusAgentMentions
+} from "@/lib/chat-agents"
 import { getAssistantCollectionsByAssistantId } from "@/db/assistant-collections"
 import { getAssistantFilesByAssistantId } from "@/db/assistant-files"
 import { getAssistantToolsByAssistantId } from "@/db/assistant-tools"
@@ -7,9 +15,11 @@ import { getCollectionFilesByCollectionId } from "@/db/collection-files"
 import { deleteMessagesIncludingAndAfter } from "@/db/messages"
 import { buildFinalMessages } from "@/lib/build-prompt"
 import { Tables } from "@/supabase/types"
-import { ChatMessage, ChatPayload, LLMID, ModelProvider } from "@/types"
+import { ChatMessage, ChatPayload, LLM, LLMID, ModelProvider } from "@/types"
 import { useRouter } from "next/navigation"
 import { useContext, useEffect, useRef } from "react"
+import { toast } from "sonner"
+import { v4 as uuidv4 } from "uuid"
 import { LLM_LIST } from "../../../lib/models/llm/llm-list"
 import {
   createTempMessages,
@@ -44,6 +54,7 @@ export const useChatHandler = () => {
     abortController,
     setAbortController,
     chatSettings,
+    availableHostedModels,
     newMessageImages,
     selectedAssistant,
     chatMessages,
@@ -63,6 +74,7 @@ export const useChatHandler = () => {
     selectedTools,
     selectedPreset,
     setChatSettings,
+    setSelectedNexusAgents,
     models,
     isPromptPickerOpen,
     isFilePickerOpen,
@@ -101,16 +113,14 @@ export const useChatHandler = () => {
 
     if (selectedAssistant) {
       setChatSettings({
-        model: selectedAssistant.model as LLMID,
+        model: DEFAULT_GOOGLE_MODEL_ID,
         prompt: selectedAssistant.prompt,
         temperature: selectedAssistant.temperature,
-        contextLength: selectedAssistant.context_length,
+        contextLength: Math.min(selectedAssistant.context_length, 32768),
         includeProfileContext: selectedAssistant.include_profile_context,
         includeWorkspaceInstructions:
           selectedAssistant.include_workspace_instructions,
-        embeddingsProvider: selectedAssistant.embeddings_provider as
-          | "openai"
-          | "local"
+        embeddingsProvider: "local"
       })
 
       let allFiles = []
@@ -145,16 +155,14 @@ export const useChatHandler = () => {
       if (allFiles.length > 0) setShowFilesDisplay(true)
     } else if (selectedPreset) {
       setChatSettings({
-        model: selectedPreset.model as LLMID,
+        model: DEFAULT_GOOGLE_MODEL_ID,
         prompt: selectedPreset.prompt,
         temperature: selectedPreset.temperature,
-        contextLength: selectedPreset.context_length,
+        contextLength: Math.min(selectedPreset.context_length, 32768),
         includeProfileContext: selectedPreset.include_profile_context,
         includeWorkspaceInstructions:
           selectedPreset.include_workspace_instructions,
-        embeddingsProvider: selectedPreset.embeddings_provider as
-          | "openai"
-          | "local"
+        embeddingsProvider: "local"
       })
     } else if (selectedWorkspace) {
       // setChatSettings({
@@ -188,11 +196,289 @@ export const useChatHandler = () => {
     }
   }
 
+  const handleSendToNexusAgents = async (
+    messageContent: string,
+    history: ChatMessage[],
+    requestedAgentIds: NexusAgentId[]
+  ) => {
+    const calledAgentIds = Array.from(
+      new Set([
+        ...requestedAgentIds,
+        ...getMentionedNexusAgents(messageContent)
+      ])
+    )
+    const requestText = stripNexusAgentMentions(messageContent)
+
+    if (calledAgentIds.length === 0) {
+      toast.error("Choose an AI agent or mention one with @ to send a message.")
+      return
+    }
+
+    if (!requestText) {
+      toast.error("Add a message for the selected AI agent.")
+      return
+    }
+
+    const agentRequests = calledAgentIds.map(agentId => {
+      const agent = NEXUS_AGENTS.find(candidate => candidate.id === agentId)
+      return agent
+        ? { agent, modelData: getNexusAgentModel(agent, availableHostedModels) }
+        : undefined
+    })
+
+    const unavailableAgent = agentRequests.find(
+      request => !request || !request.modelData
+    )
+    if (unavailableAgent) {
+      const unavailableName =
+        unavailableAgent?.agent?.name || "Selected AI agent"
+      toast.error(
+        `${unavailableName} is unavailable. Configure its provider key in Profile > Advanced.`
+      )
+      return
+    }
+
+    const validAgentRequests = agentRequests.filter(
+      (
+        request
+      ): request is {
+        agent: (typeof NEXUS_AGENTS)[number]
+        modelData: LLM
+      } => Boolean(request?.modelData)
+    )
+
+    if (selectedTools.length > 0) {
+      toast.error(
+        "Remove selected tools before calling multiple agents. Multi-agent tool execution is not supported yet."
+      )
+      return
+    }
+
+    if (
+      newMessageImages.length > 0 &&
+      validAgentRequests.some(request => !request.modelData.imageInput)
+    ) {
+      toast.error(
+        "One or more selected agents do not support images. Remove the image or select image-capable agents."
+      )
+      return
+    }
+
+    if (!chatSettings || !profile || !selectedWorkspace) {
+      toast.error("Chat setup is not ready. Refresh and try again.")
+      return
+    }
+
+    setUserInput("")
+    setIsGenerating(true)
+    setIsPromptPickerOpen(false)
+    setIsFilePickerOpen(false)
+    setNewMessageImages([])
+
+    const controller = new AbortController()
+    setAbortController(controller)
+
+    let retrievedFileItems: Tables<"file_items">[] = []
+    try {
+      if (
+        (newMessageFiles.length > 0 || chatFiles.length > 0) &&
+        useRetrieval
+      ) {
+        setToolInUse("retrieval")
+        retrievedFileItems = await handleRetrieval(
+          requestText,
+          newMessageFiles,
+          chatFiles,
+          chatSettings.embeddingsProvider,
+          sourceCount
+        )
+      }
+
+      const userMessage: ChatMessage = {
+        message: {
+          chat_id: selectedChat?.id || "",
+          assistant_id: null,
+          content: messageContent,
+          created_at: new Date().toISOString(),
+          id: uuidv4(),
+          image_paths: newMessageImages.map(image => image.base64),
+          model: chatSettings.model,
+          role: "user",
+          sequence_number: history.length,
+          updated_at: new Date().toISOString(),
+          user_id: profile.user_id
+        },
+        fileItems: []
+      }
+
+      const pendingAgentMessages: ChatMessage[] = validAgentRequests.map(
+        ({ modelData }, index) => ({
+          message: {
+            chat_id: selectedChat?.id || "",
+            assistant_id: null,
+            content: "",
+            created_at: new Date().toISOString(),
+            id: uuidv4(),
+            image_paths: [],
+            model: modelData.modelId,
+            role: "assistant",
+            sequence_number: history.length + index + 1,
+            updated_at: new Date().toISOString(),
+            user_id: profile.user_id
+          },
+          fileItems: []
+        })
+      )
+
+      setChatMessages([...history, userMessage, ...pendingAgentMessages])
+      setToolInUse("Gemini")
+
+      const responses = await Promise.allSettled(
+        validAgentRequests.map(async ({ agent, modelData }, index) => {
+          if (controller.signal.aborted) {
+            throw new DOMException("The request was cancelled.", "AbortError")
+          }
+
+          const assistantMessage = pendingAgentMessages[index]
+          const agentSettings = {
+            ...chatSettings,
+            model: modelData.modelId,
+            prompt: `${chatSettings.prompt}\n\n${agent.instructions}`
+          }
+          const payload: ChatPayload = {
+            chatSettings: agentSettings,
+            workspaceInstructions: selectedWorkspace.instructions || "",
+            chatMessages: [...history, userMessage],
+            assistant: selectedChat?.assistant_id ? selectedAssistant : null,
+            messageFileItems: retrievedFileItems,
+            chatFileItems
+          }
+          const generatedText = await handleHostedChat(
+            payload,
+            profile,
+            modelData,
+            assistantMessage,
+            false,
+            controller,
+            newMessageImages,
+            chatImages,
+            setIsGenerating,
+            setFirstTokenReceived,
+            setChatMessages,
+            setToolInUse
+          )
+
+          return {
+            assistantMessage,
+            generatedText,
+            modelData
+          }
+        })
+      )
+
+      const completedResponses: {
+        assistantMessage: ChatMessage
+        generatedText: string
+        modelData: LLM
+      }[] = []
+
+      responses.forEach((result, index) => {
+        if (result.status === "fulfilled") {
+          completedResponses.push(result.value)
+          return
+        }
+
+        const agent = validAgentRequests[index].agent
+        const pendingMessage = pendingAgentMessages[index]
+        setChatMessages(messages =>
+          messages.filter(
+            message => message.message.id !== pendingMessage.message.id
+          )
+        )
+
+        if (result.reason?.name !== "AbortError") {
+          toast.error(
+            `${agent.name}: ${
+              result.reason instanceof Error
+                ? result.reason.message
+                : "The request failed."
+            }`
+          )
+        }
+      })
+
+      if (completedResponses.length === 0) {
+        setChatMessages(history)
+        setUserInput(messageContent)
+        return
+      }
+
+      let currentChat = selectedChat ? { ...selectedChat } : null
+      if (!currentChat) {
+        currentChat = await handleCreateChat(
+          chatSettings,
+          profile,
+          selectedWorkspace,
+          messageContent,
+          selectedAssistant,
+          newMessageFiles,
+          setSelectedChat,
+          setChats,
+          setChatFiles
+        )
+      } else {
+        const updatedChat = await updateChat(currentChat.id, {
+          updated_at: new Date().toISOString()
+        })
+        setChats(chats =>
+          chats.map(chat => (chat.id === updatedChat.id ? updatedChat : chat))
+        )
+      }
+
+      await handleCreateMessages(
+        history,
+        currentChat,
+        profile,
+        completedResponses[0].modelData,
+        messageContent,
+        completedResponses[0].generatedText,
+        newMessageImages,
+        false,
+        retrievedFileItems,
+        setChatMessages,
+        setChatFileItems,
+        setChatImages,
+        selectedAssistant,
+        completedResponses.map(({ modelData, generatedText }) => ({
+          modelData,
+          generatedText
+        })),
+        chatSettings.model
+      )
+      setSelectedNexusAgents([])
+    } catch (error) {
+      setChatMessages(history)
+      setUserInput(messageContent)
+      toast.error(
+        error instanceof Error ? error.message : "Unable to send this message."
+      )
+    } finally {
+      setIsGenerating(false)
+      setFirstTokenReceived(false)
+      setToolInUse("none")
+    }
+  }
+
   const handleSendMessage = async (
     messageContent: string,
     chatMessages: ChatMessage[],
-    isRegeneration: boolean
+    isRegeneration: boolean,
+    agentIds?: NexusAgentId[]
   ) => {
+    if (agentIds !== undefined) {
+      return handleSendToNexusAgents(messageContent, chatMessages, agentIds)
+    }
+
     const startingInput = messageContent
 
     try {
@@ -386,6 +672,10 @@ export const useChatHandler = () => {
       setIsGenerating(false)
       setFirstTokenReceived(false)
       setUserInput(startingInput)
+      setChatMessages(chatMessages)
+      toast.error(
+        error instanceof Error ? error.message : "Unable to send this message."
+      )
     }
   }
 

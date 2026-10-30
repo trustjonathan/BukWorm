@@ -10,7 +10,7 @@ interface CommandKProps {}
 export const CommandK: FC<CommandKProps> = ({}) => {
   useHotkey("k", () => setIsOpen(prevState => !prevState))
 
-  const { profile } = useContext(ChatbotUIContext)
+  const { profile, envKeyMap } = useContext(ChatbotUIContext)
 
   const [isOpen, setIsOpen] = useState(false)
   const [value, setValue] = useState("")
@@ -20,18 +20,31 @@ export const CommandK: FC<CommandKProps> = ({}) => {
   const handleCommandK = async () => {
     setLoading(true)
 
-    const response = await fetch("/api/command", {
-      method: "POST",
-      body: JSON.stringify({
-        input: value
+    try {
+      const response = await fetch("/api/command", {
+        method: "POST",
+        body: JSON.stringify({
+          input: value
+        })
       })
-    })
 
-    const data = await response.json()
+      const data = await response.json()
 
-    setContent(data.content)
-    setLoading(false)
-    setValue("")
+      if (!response.ok) {
+        throw new Error(
+          data.message || "Gemini could not process that command."
+        )
+      }
+
+      setContent(data.content)
+      setValue("")
+    } catch (error) {
+      setContent(
+        error instanceof Error ? error.message : "The command could not run."
+      )
+    } finally {
+      setLoading(false)
+    }
   }
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -47,7 +60,7 @@ export const CommandK: FC<CommandKProps> = ({}) => {
     isOpen && (
       <Dialog open={isOpen} onOpenChange={setIsOpen}>
         <DialogContent onKeyDown={handleKeyDown}>
-          {profile.openai_api_key ? (
+          {profile.google_gemini_api_key || envKeyMap.google ? (
             <div className="space-y-2">
               <div>{content}</div>
 
@@ -78,7 +91,7 @@ export const CommandK: FC<CommandKProps> = ({}) => {
               </div>
             </div>
           ) : (
-            <div>Add your OpenAI API key in the settings to unlock CMD+K.</div>
+            <div>Gemini is not configured for this BukWorm workspace.</div>
           )}
         </DialogContent>
       </Dialog>

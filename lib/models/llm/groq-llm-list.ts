@@ -2,6 +2,15 @@ import { LLM } from "@/types"
 
 const GROQ_PLATORM_LINK = "https://groq.com/"
 
+const GPT_OSS_20B: LLM = {
+  modelId: "openai/gpt-oss-20b",
+  modelName: "GPT OSS 20B (Groq)",
+  provider: "groq",
+  hostedId: "openai/gpt-oss-20b",
+  platformLink: GROQ_PLATORM_LINK,
+  imageInput: false
+}
+
 const LLaMA3_8B: LLM = {
   modelId: "llama3-8b-8192",
   modelName: "LLaMA3-8b-chat",
@@ -63,6 +72,7 @@ const GEMMA_7B_IT: LLM = {
 }
 
 export const GROQ_LLM_LIST: LLM[] = [
+  GPT_OSS_20B,
   LLaMA3_8B,
   LLaMA3_70B,
   MIXTRAL_8X7B,

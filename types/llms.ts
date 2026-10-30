@@ -18,6 +18,8 @@ export type OpenAILLMID =
 
 // Google Models
 export type GoogleLLMID =
+  | "gemini-3.5-flash-lite"
+  | "gemini-3.8-flash"
   | "gemini-pro" // Gemini Pro
   | "gemini-pro-vision" // Gemini Pro Vision
   | "gemini-1.5-pro-latest" // Gemini 1.5 Pro
@@ -40,6 +42,9 @@ export type MistralLLMID =
   | "mistral-large-latest" // Mistral Large
 
 export type GroqLLMID =
+  | "openai/gpt-oss-20b"
+  | "openai/gpt-oss-120b"
+  | "qwen/qwen3.8-27b"
   | "llama3-8b-8192" // LLaMA3-8b
   | "llama3-70b-8192" // LLaMA3-70b
   | "mixtral-8x7b-32768" // Mixtral-8x7b

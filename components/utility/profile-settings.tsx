@@ -10,6 +10,7 @@ import { uploadProfileImage } from "@/db/storage/profile-images"
 import { exportLocalStorageAsJSON } from "@/lib/export-old-data"
 import { fetchOpenRouterModels } from "@/lib/models/fetch-models"
 import { LLM_LIST_MAP } from "@/lib/models/llm/llm-list"
+import { DEFAULT_GOOGLE_MODEL_ID } from "@/lib/models/llm/google-llm-list"
 import { supabase } from "@/lib/supabase/browser-client"
 import { cn } from "@/lib/utils"
 import { OpenRouterLLM } from "@/types"
@@ -164,16 +165,7 @@ export const ProfileSettings: FC<ProfileSettingsProps> = ({}) => {
 
     toast.success("Profile updated!")
 
-    const providers = [
-      "openai",
-      "google",
-      "azure",
-      "anthropic",
-      "mistral",
-      "groq",
-      "perplexity",
-      "openrouter"
-    ]
+    const providers = ["google"]
 
     providers.forEach(async provider => {
       let providerKey: keyof typeof profile
@@ -186,7 +178,9 @@ export const ProfileSettings: FC<ProfileSettingsProps> = ({}) => {
         providerKey = `${provider}_api_key` as keyof typeof profile
       }
 
-      const models = LLM_LIST_MAP[provider]
+      const models = LLM_LIST_MAP[provider].filter(
+        model => model.modelId === DEFAULT_GOOGLE_MODEL_ID
+      )
       const envKeyActive = envKeyMap[provider]
 
       if (!envKeyActive) {
@@ -336,7 +330,7 @@ export const ProfileSettings: FC<ProfileSettingsProps> = ({}) => {
           <Tabs defaultValue="profile">
             <TabsList className="mt-4 grid w-full grid-cols-2">
               <TabsTrigger value="profile">Profile</TabsTrigger>
-              <TabsTrigger value="keys">API Keys</TabsTrigger>
+              <TabsTrigger value="keys">Advanced</TabsTrigger>
             </TabsList>
 
             <TabsContent className="mt-4 space-y-4" value="profile">
@@ -432,7 +426,15 @@ export const ProfileSettings: FC<ProfileSettingsProps> = ({}) => {
               </div>
             </TabsContent>
 
-            <TabsContent className="mt-4 space-y-4" value="keys">
+            <TabsContent
+              className="mt-4 space-y-4 [&>div:not(:nth-of-type(4))]:hidden"
+              value="keys"
+            >
+              <p className="text-muted-foreground text-sm">
+                BukWorm uses Gemini for every conversation. A personal key is
+                optional when this workspace already provides Gemini access.
+              </p>
+
               <div className="mt-5 space-y-2">
                 <Label className="flex items-center">
                   {useAzureOpenai
@@ -646,10 +648,10 @@ export const ProfileSettings: FC<ProfileSettingsProps> = ({}) => {
 
               <div className="space-y-1">
                 {envKeyMap["google"] ? (
-                  <Label>Google Gemini API key set by admin.</Label>
+                  <Label>Gemini access is configured for BukWorm.</Label>
                 ) : (
                   <>
-                    <Label>Google Gemini API Key</Label>
+                    <Label>Personal Gemini API Key</Label>
                     <Input
                       placeholder="Google Gemini API Key"
                       type="password"
@@ -732,11 +734,7 @@ export const ProfileSettings: FC<ProfileSettingsProps> = ({}) => {
             <ThemeSwitcher />
 
             <WithTooltip
-              display={
-                <div>
-                  Download Chatbot UI 1.0 data as JSON. Import coming soon!
-                </div>
-              }
+              display={<div>Download BukWorm chat data as JSON.</div>}
               trigger={
                 <IconFileDownload
                   className="cursor-pointer hover:opacity-50"

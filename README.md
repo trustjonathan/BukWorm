@@ -1,8 +1,12 @@
-# Chatbot UI
+# BukWorm
 
-The open-source AI chat app for everyone.
+BukWorm is a Gemini-powered AI workspace built on the open-source Chatbot UI project.
 
-<img src="./public/readme/screenshot.png" alt="Chatbot UI" width="600">
+<img src="./public/readme/screenshot.png" alt="BukWorm" width="600">
+
+Gemini Flash-Lite is the default chat model. Set `GOOGLE_GEMINI_API_KEY` in
+`.env.local` to provide Gemini access for the workspace, or configure a
+personal Gemini key in Profile Settings.
 
 ## Demo
 

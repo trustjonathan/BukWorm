@@ -10,6 +10,7 @@ import {
 } from "@/types"
 import { AssistantImage } from "@/types/images/assistant-image"
 import { VALID_ENV_KEYS } from "@/types/valid-keys"
+import { NexusAgentId } from "@/lib/chat-agents"
 import { Dispatch, SetStateAction, createContext } from "react"
 
 interface ChatbotUIContext {
@@ -74,6 +75,8 @@ interface ChatbotUIContext {
   setChatMessages: Dispatch<SetStateAction<ChatMessage[]>>
   chatSettings: ChatSettings | null
   setChatSettings: Dispatch<SetStateAction<ChatSettings>>
+  selectedNexusAgents: NexusAgentId[]
+  setSelectedNexusAgents: Dispatch<SetStateAction<NexusAgentId[]>>
   selectedChat: Tables<"chats"> | null
   setSelectedChat: Dispatch<SetStateAction<Tables<"chats"> | null>>
   chatFileItems: Tables<"file_items">[]
@@ -202,6 +205,8 @@ export const ChatbotUIContext = createContext<ChatbotUIContext>({
   setChatMessages: () => {},
   chatSettings: null,
   setChatSettings: () => {},
+  selectedNexusAgents: [],
+  setSelectedNexusAgents: () => {},
   chatFileItems: [],
   setChatFileItems: () => {},
 

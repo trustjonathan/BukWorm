@@ -150,9 +150,7 @@ export const ChatInput: FC<ChatInputProps> = ({}) => {
     for (const item of items) {
       if (item.type.indexOf("image") === 0) {
         if (!imagesAllowed) {
-          toast.error(
-            `Images are not supported for this model. Use models like GPT-4 Vision instead.`
-          )
+          toast.error("Images are not supported for the current model.")
           return
         }
         const file = item.getAsFile()
@@ -211,14 +209,14 @@ export const ChatInput: FC<ChatInputProps> = ({}) => {
         )}
       </div>
 
-      <div className="border-input relative mt-3 flex min-h-[60px] w-full items-center justify-center rounded-xl border-2">
+      <div className="relative mt-3 flex min-h-[60px] w-full items-center justify-center rounded-2xl border border-sky-200 bg-white/85 shadow-[0_12px_42px_rgba(56,189,248,0.12)] backdrop-blur-xl transition-colors focus-within:border-sky-400 dark:border-slate-700 dark:bg-slate-900/85 dark:shadow-[0_12px_42px_rgba(34,211,238,0.08)] dark:focus-within:border-cyan-400">
         <div className="absolute bottom-[76px] left-0 max-h-[300px] w-full overflow-auto rounded-xl dark:border-none">
           <ChatCommandInput />
         </div>
 
         <>
           <IconCirclePlus
-            className="absolute bottom-[12px] left-3 cursor-pointer p-1 hover:opacity-50"
+            className="absolute bottom-[12px] left-3 cursor-pointer p-1 text-slate-400 transition-colors hover:text-cyan-600 dark:text-slate-400 dark:hover:text-cyan-300"
             size={32}
             onClick={() => fileInputRef.current?.click()}
           />
@@ -239,10 +237,7 @@ export const ChatInput: FC<ChatInputProps> = ({}) => {
         <TextareaAutosize
           textareaRef={chatInputRef}
           className="ring-offset-background placeholder:text-muted-foreground focus-visible:ring-ring text-md flex w-full resize-none rounded-md border-none bg-transparent px-14 py-2 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50"
-          placeholder={t(
-            // `Ask anything. Type "@" for assistants, "/" for prompts, "#" for files, and "!" for tools.`
-            `Ask anything. Type @  /  #  !`
-          )}
+          placeholder={t("Ask BukWorm anything...")}
           onValueChange={handleInputChange}
           value={userInput}
           minRows={1}
@@ -256,14 +251,14 @@ export const ChatInput: FC<ChatInputProps> = ({}) => {
         <div className="absolute bottom-[14px] right-3 cursor-pointer hover:opacity-50">
           {isGenerating ? (
             <IconPlayerStopFilled
-              className="hover:bg-background animate-pulse rounded bg-transparent p-1"
+              className="animate-pulse rounded bg-transparent p-1 text-rose-500 hover:bg-rose-500/10 dark:text-rose-300"
               onClick={handleStopMessage}
               size={30}
             />
           ) : (
             <IconSend
               className={cn(
-                "bg-primary text-secondary rounded p-1",
+                "rounded-lg bg-gradient-to-br from-cyan-500 to-indigo-500 p-1 text-white shadow-md shadow-cyan-900/15 transition hover:brightness-105",
                 !userInput && "cursor-not-allowed opacity-50"
               )}
               onClick={() => {

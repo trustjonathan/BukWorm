@@ -17,10 +17,10 @@ import {
   ChatPayload,
   ChatSettings,
   LLM,
+  LLMID,
   MessageImage
 } from "@/types"
 import React from "react"
-import { toast } from "sonner"
 import { v4 as uuidv4 } from "uuid"
 
 export const validateChatSettings = (
@@ -208,9 +208,12 @@ export const handleHostedChat = async (
 
   let draftMessages = await buildFinalMessages(payload, profile, chatImages)
 
-  let formattedMessages : any[] = []
+  let formattedMessages: any[] = []
   if (provider === "google") {
-    formattedMessages = await adaptMessagesForGoogleGemini(payload, draftMessages)
+    formattedMessages = await adaptMessagesForGoogleGemini(
+      payload,
+      draftMessages
+    )
   } else {
     formattedMessages = draftMessages
   }
@@ -261,18 +264,15 @@ export const fetchChatResponse = async (
   })
 
   if (!response.ok) {
-    if (response.status === 404 && !isHosted) {
-      toast.error(
-        "Model not found. Make sure you have it downloaded via Ollama."
-      )
-    }
-
-    const errorData = await response.json()
-
-    toast.error(errorData.message)
+    const errorData = await response.json().catch(() => ({
+      message:
+        !isHosted && response.status === 404
+          ? "Model not found. Make sure you have it downloaded via Ollama."
+          : response.statusText
+    }))
 
     setIsGenerating(false)
-    setChatMessages(prevMessages => prevMessages.slice(0, -2))
+    throw new Error(errorData.message || response.statusText)
   }
 
   return response
@@ -348,7 +348,7 @@ export const handleCreateChat = async (
   profile: Tables<"profiles">,
   selectedWorkspace: Tables<"workspaces">,
   messageContent: string,
-  selectedAssistant: Tables<"assistants">,
+  selectedAssistant: Tables<"assistants"> | null,
   newMessageFiles: ChatFile[],
   setSelectedChat: React.Dispatch<React.SetStateAction<Tables<"chats"> | null>>,
   setChats: React.Dispatch<React.SetStateAction<Tables<"chats">[]>>,
@@ -399,29 +399,37 @@ export const handleCreateMessages = async (
     React.SetStateAction<Tables<"file_items">[]>
   >,
   setChatImages: React.Dispatch<React.SetStateAction<MessageImage[]>>,
-  selectedAssistant: Tables<"assistants"> | null
+  selectedAssistant: Tables<"assistants"> | null,
+  assistantResponses?: { modelData: LLM; generatedText: string }[],
+  userModelId?: LLMID
 ) => {
   const finalUserMessage: TablesInsert<"messages"> = {
     chat_id: currentChat.id,
     assistant_id: null,
     user_id: profile.user_id,
     content: messageContent,
-    model: modelData.modelId,
+    model: userModelId || modelData.modelId,
     role: "user",
     sequence_number: chatMessages.length,
     image_paths: []
   }
 
-  const finalAssistantMessage: TablesInsert<"messages"> = {
-    chat_id: currentChat.id,
-    assistant_id: selectedAssistant?.id || null,
-    user_id: profile.user_id,
-    content: generatedText,
-    model: modelData.modelId,
-    role: "assistant",
-    sequence_number: chatMessages.length + 1,
-    image_paths: []
-  }
+  const responses = assistantResponses?.length
+    ? assistantResponses
+    : [{ modelData, generatedText }]
+
+  const finalAssistantMessages: TablesInsert<"messages">[] = responses.map(
+    (response, index) => ({
+      chat_id: currentChat.id,
+      assistant_id: selectedAssistant?.id || null,
+      user_id: profile.user_id,
+      content: response.generatedText,
+      model: response.modelData.modelId,
+      role: "assistant",
+      sequence_number: chatMessages.length + index + 1,
+      image_paths: []
+    })
+  )
 
   let finalChatMessages: ChatMessage[] = []
 
@@ -441,7 +449,7 @@ export const handleCreateMessages = async (
   } else {
     const createdMessages = await createMessages([
       finalUserMessage,
-      finalAssistantMessage
+      ...finalAssistantMessages
     ])
 
     // Upload each image (stored in newMessageImages) for the user message to message_images bucket
@@ -476,14 +484,14 @@ export const handleCreateMessages = async (
       image_paths: paths
     })
 
-    const createdMessageFileItems = await createMessageFileItems(
-      retrievedFileItems.map(fileItem => {
-        return {
+    await createMessageFileItems(
+      retrievedFileItems.flatMap(fileItem =>
+        createdMessages.slice(1).map(assistantMessage => ({
           user_id: profile.user_id,
-          message_id: createdMessages[1].id,
+          message_id: assistantMessage.id,
           file_item_id: fileItem.id
-        }
-      })
+        }))
+      )
     )
 
     finalChatMessages = [
@@ -492,10 +500,10 @@ export const handleCreateMessages = async (
         message: updatedMessage,
         fileItems: []
       },
-      {
-        message: createdMessages[1],
+      ...createdMessages.slice(1).map(message => ({
+        message,
         fileItems: retrievedFileItems.map(fileItem => fileItem.id)
-      }
+      }))
     ]
 
     setChatFileItems(prevFileItems => {

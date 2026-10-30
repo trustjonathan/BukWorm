@@ -5,8 +5,8 @@ import { getAssistantToolsByAssistantId } from "@/db/assistant-tools"
 import { getCollectionFilesByCollectionId } from "@/db/collection-files"
 import useHotkey from "@/lib/hooks/use-hotkey"
 import { LLM_LIST } from "@/lib/models/llm/llm-list"
+import { DEFAULT_GOOGLE_MODEL_ID } from "@/lib/models/llm/google-llm-list"
 import { Tables } from "@/supabase/types"
-import { LLMID } from "@/types"
 import { IconChevronDown, IconRobotFace } from "@tabler/icons-react"
 import Image from "next/image"
 import { FC, useContext, useEffect, useRef, useState } from "react"
@@ -106,29 +106,30 @@ export const QuickSettings: FC<QuickSettingsProps> = ({}) => {
       setSelectedTools([])
       if (selectedWorkspace) {
         setChatSettings({
-          model: selectedWorkspace.default_model as LLMID,
+          model: DEFAULT_GOOGLE_MODEL_ID,
           prompt: selectedWorkspace.default_prompt,
           temperature: selectedWorkspace.default_temperature,
-          contextLength: selectedWorkspace.default_context_length,
+          contextLength: Math.min(
+            selectedWorkspace.default_context_length,
+            32768
+          ),
           includeProfileContext: selectedWorkspace.include_profile_context,
           includeWorkspaceInstructions:
             selectedWorkspace.include_workspace_instructions,
-          embeddingsProvider: selectedWorkspace.embeddings_provider as
-            | "openai"
-            | "local"
+          embeddingsProvider: "local"
         })
       }
       return
     }
 
     setChatSettings({
-      model: item.model as LLMID,
+      model: DEFAULT_GOOGLE_MODEL_ID,
       prompt: item.prompt,
       temperature: item.temperature,
-      contextLength: item.context_length,
+      contextLength: Math.min(item.context_length, 32768),
       includeProfileContext: item.include_profile_context,
       includeWorkspaceInstructions: item.include_workspace_instructions,
-      embeddingsProvider: item.embeddings_provider as "openai" | "local"
+      embeddingsProvider: "local"
     })
   }
 
@@ -179,7 +180,7 @@ export const QuickSettings: FC<QuickSettingsProps> = ({}) => {
       )?.base64 || ""
 
   const modelDetails = LLM_LIST.find(
-    model => model.modelId === selectedPreset?.model
+    model => model.modelId === DEFAULT_GOOGLE_MODEL_ID
   )
 
   return (
@@ -191,7 +192,15 @@ export const QuickSettings: FC<QuickSettingsProps> = ({}) => {
       }}
     >
       <DropdownMenuTrigger asChild className="max-w-[400px]" disabled={loading}>
-        <Button variant="ghost" className="flex space-x-3 text-lg">
+        <Button
+          variant="ghost"
+          className="flex max-w-[44px] space-x-1 text-sm sm:max-w-[400px] sm:space-x-3 sm:text-lg"
+          aria-label={
+            selectedPreset?.name ||
+            selectedAssistant?.name ||
+            t("Quick Settings")
+          }
+        >
           {selectedPreset && (
             <ModelIcon
               provider={modelDetails?.provider || "custom"}
@@ -220,7 +229,7 @@ export const QuickSettings: FC<QuickSettingsProps> = ({}) => {
             <div className="animate-pulse">Loading assistant...</div>
           ) : (
             <>
-              <div className="overflow-hidden text-ellipsis">
+              <div className="hidden overflow-hidden text-ellipsis sm:block">
                 {isModified &&
                   (selectedPreset || selectedAssistant) &&
                   "Modified "}

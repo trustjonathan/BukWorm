@@ -9,13 +9,6 @@ import { ModelSelect } from "../models/model-select"
 import { AdvancedSettings } from "./advanced-settings"
 import { Checkbox } from "./checkbox"
 import { Label } from "./label"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue
-} from "./select"
 import { Slider } from "./slider"
 import { TextareaAutosize } from "./textarea-autosize"
 import { WithTooltip } from "./with-tooltip"
@@ -219,34 +212,6 @@ const AdvancedContent: FC<AdvancedContentProps> = ({
             }
           />
         )}
-      </div>
-
-      <div className="mt-5">
-        <Label>Embeddings Provider</Label>
-
-        <Select
-          value={chatSettings.embeddingsProvider}
-          onValueChange={(embeddingsProvider: "openai" | "local") => {
-            onChangeChatSettings({
-              ...chatSettings,
-              embeddingsProvider
-            })
-          }}
-        >
-          <SelectTrigger>
-            <SelectValue defaultValue="openai" />
-          </SelectTrigger>
-
-          <SelectContent>
-            <SelectItem value="openai">
-              {profile?.use_azure_openai ? "Azure OpenAI" : "OpenAI"}
-            </SelectItem>
-
-            {window.location.hostname === "localhost" && (
-              <SelectItem value="local">Local</SelectItem>
-            )}
-          </SelectContent>
-        </Select>
       </div>
     </div>
   )

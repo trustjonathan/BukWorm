@@ -1,28 +1,39 @@
 "use client"
 
-import { ChatbotUISVG } from "@/components/icons/chatbotui-svg"
-import { IconArrowRight } from "@tabler/icons-react"
-import { useTheme } from "next-themes"
+import { IconArrowRight, IconBook, IconSparkles } from "@tabler/icons-react"
 import Link from "next/link"
 
 export default function HomePage() {
-  const { theme } = useTheme()
-
   return (
-    <div className="flex size-full flex-col items-center justify-center">
-      <div>
-        <ChatbotUISVG theme={theme === "dark" ? "dark" : "light"} scale={0.3} />
+    <div className="relative flex size-full flex-col items-center justify-center overflow-hidden bg-gradient-to-br from-sky-50 via-white to-violet-100 px-6 text-slate-900 dark:from-[#080d1a] dark:via-[#10172a] dark:to-[#17112c] dark:text-slate-100">
+      <div className="pointer-events-none absolute -left-36 -top-40 size-[30rem] rounded-full bg-cyan-300/25 blur-3xl dark:bg-cyan-500/10" />
+      <div className="pointer-events-none absolute -bottom-48 -right-36 size-[32rem] rounded-full bg-violet-300/25 blur-3xl dark:bg-violet-500/10" />
+
+      <div className="relative flex max-w-2xl flex-col items-center text-center">
+        <div className="mb-6 flex size-20 items-center justify-center rounded-[1.75rem] border border-cyan-200 bg-gradient-to-br from-cyan-100 via-white to-violet-100 text-indigo-600 shadow-2xl shadow-cyan-900/10 dark:border-cyan-300/25 dark:from-cyan-400/15 dark:via-slate-900 dark:to-indigo-400/15 dark:text-cyan-200">
+          <IconBook size={42} stroke={1.5} />
+        </div>
+
+        <div className="flex items-center gap-2 text-5xl font-bold tracking-tight">
+          BukWorm
+          <IconSparkles
+            className="text-cyan-600 dark:text-cyan-300"
+            size={24}
+          />
+        </div>
+        <p className="mt-4 max-w-xl text-lg leading-relaxed text-slate-600 dark:text-slate-300">
+          Your ideas, questions, and reading companion — powered by fast,
+          thoughtful Gemini responses.
+        </p>
+
+        <Link
+          className="mt-8 inline-flex items-center gap-2 rounded-xl border border-cyan-400/30 bg-gradient-to-r from-cyan-500 to-indigo-500 px-6 py-3 font-semibold text-white shadow-xl shadow-cyan-900/20 transition hover:-translate-y-0.5 hover:shadow-cyan-900/30"
+          href="/login"
+        >
+          Start chatting
+          <IconArrowRight size={19} />
+        </Link>
       </div>
-
-      <div className="mt-2 text-4xl font-bold">Chatbot UI</div>
-
-      <Link
-        className="mt-4 flex w-[200px] items-center justify-center rounded-md bg-blue-500 p-2 font-semibold"
-        href="/login"
-      >
-        Start Chatting
-        <IconArrowRight className="ml-1" size={20} />
-      </Link>
     </div>
   )
 }

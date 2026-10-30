@@ -1,4 +1,5 @@
 import { checkApiKey, getServerProfile } from "@/lib/server/server-chat-helpers"
+import { DEFAULT_GOOGLE_MODEL_ID } from "@/lib/models/llm/google-llm-list"
 import { ChatSettings } from "@/types"
 import { GoogleGenerativeAI } from "@google/generative-ai"
 
@@ -17,14 +18,17 @@ export async function POST(request: Request) {
     checkApiKey(profile.google_gemini_api_key, "Google")
 
     const genAI = new GoogleGenerativeAI(profile.google_gemini_api_key || "")
-    const googleModel = genAI.getGenerativeModel({ model: chatSettings.model })
+    const googleModel = genAI.getGenerativeModel({
+      model: DEFAULT_GOOGLE_MODEL_ID
+    })
 
     const lastMessage = messages.pop()
 
     const chat = googleModel.startChat({
       history: messages,
       generationConfig: {
-        temperature: chatSettings.temperature
+        temperature: chatSettings.temperature,
+        maxOutputTokens: 2048
       }
     })
 
@@ -44,7 +48,6 @@ export async function POST(request: Request) {
     return new Response(readableStream, {
       headers: { "Content-Type": "text/plain" }
     })
-
   } catch (error: any) {
     let errorMessage = error.message || "An unexpected error occurred"
     const errorCode = error.status || 500
