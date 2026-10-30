@@ -9,6 +9,7 @@ import { Metadata, Viewport } from "next"
 import { Inter } from "next/font/google"
 import { cookies } from "next/headers"
 import { ReactNode } from "react"
+import "katex/dist/katex.min.css"
 import "./globals.css"
 
 const inter = Inter({ subsets: ["latin"] })

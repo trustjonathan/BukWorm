@@ -16,7 +16,11 @@ export async function POST(request: Request) {
     checkApiKey(profile.google_gemini_api_key, "Google")
 
     const genAI = new GoogleGenerativeAI(profile.google_gemini_api_key || "")
-    const model = genAI.getGenerativeModel({ model: DEFAULT_GOOGLE_MODEL_ID })
+    const model = genAI.getGenerativeModel({
+      model: DEFAULT_GOOGLE_MODEL_ID,
+      systemInstruction:
+        "When responding with mathematical equations, fractions, or chemical formulas, always use standard LaTeX. Use inline math with $...$ for short expressions and block math with $$...$$ for standalone equations or multi-step calculations."
+    })
 
     const response = await model.generateContent({
       contents: [{ role: "user", parts: [{ text: input }] }],
