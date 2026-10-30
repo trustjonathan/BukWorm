@@ -86,7 +86,8 @@ export const createTempMessages = (
   b64Images: string[],
   isRegeneration: boolean,
   setChatMessages: React.Dispatch<React.SetStateAction<ChatMessage[]>>,
-  selectedAssistant: Tables<"assistants"> | null
+  selectedAssistant: Tables<"assistants"> | null,
+  parentId?: string | null
 ) => {
   let tempUserChatMessage: ChatMessage = {
     message: {
@@ -100,8 +101,9 @@ export const createTempMessages = (
       role: "user",
       sequence_number: chatMessages.length,
       updated_at: "",
-      user_id: ""
-    },
+      user_id: "",
+      parent_id: parentId ?? null
+    } as any,
     fileItems: []
   }
 
@@ -117,8 +119,9 @@ export const createTempMessages = (
       role: "assistant",
       sequence_number: chatMessages.length + 1,
       updated_at: "",
-      user_id: ""
-    },
+      user_id: "",
+      parent_id: tempUserChatMessage.message.id
+    } as any,
     fileItems: []
   }
 

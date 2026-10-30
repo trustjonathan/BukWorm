@@ -32,34 +32,15 @@ export const ChatMessages: FC<ChatMessagesProps> = ({}) => {
   const tree = buildMessageTree(chatMessages)
 
   /**
-   * Called when the user clicks "Add Note to this Context".
-   * Sends the note to Gemini using only the ancestor chain of that branch.
+   * Called when the user replies to a message (e.g. via swipe-left on an agent message).
+   * Sends the reply to Gemini using only the ancestor chain of that branch.
    */
-  const handleAddNote = (parentId: string, noteText: string) => {
-    // Build the ancestor chain leading to parentId so we can pass it as context
+  const handleReplyInThread = (parentId: string, replyText: string) => {
+    // Build the ancestor chain leading to parentId so Gemini gets the exact branch context
     const ancestorChain = getAncestorChain(tree, parentId)
 
-    // The new user note message (temp — will be saved by handleSendMessage)
-    const tempUserNote: ChatMessage = {
-      message: {
-        chat_id: ancestorChain[0]?.message.chat_id ?? "",
-        assistant_id: null,
-        content: noteText,
-        created_at: new Date().toISOString(),
-        id: crypto.randomUUID(),
-        image_paths: [],
-        model: chatSettings?.model ?? "",
-        role: "user",
-        sequence_number: chatMessages.length,
-        updated_at: new Date().toISOString(),
-        user_id: profile?.user_id ?? "",
-        parent_id: parentId
-      } as any,
-      fileItems: []
-    }
-
-    // Fire off Gemini in that branch's context
-    handleSendMessage(noteText, ancestorChain, false)
+    // Fire off Gemini in that branch's context with parentId
+    handleSendMessage(replyText, ancestorChain, false, undefined, parentId)
   }
 
   return (
@@ -77,7 +58,7 @@ export const ChatMessages: FC<ChatMessagesProps> = ({}) => {
           node={node}
           depth={0}
           isLastSibling={idx === tree.length - 1}
-          onAddNote={handleAddNote}
+          onReplyInThread={handleReplyInThread}
           onStartEdit={setEditingMessage}
           onCancelEdit={() => setEditingMessage(undefined)}
           onSubmitEdit={handleSendEdit}

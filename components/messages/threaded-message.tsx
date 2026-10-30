@@ -7,6 +7,7 @@ import { Tables } from "@/supabase/types"
 import { LLM, LLMID, MessageImage, ModelProvider } from "@/types"
 import { MessageNode } from "@/types/threaded-chat"
 import {
+  IconArrowBackUp,
   IconBolt,
   IconCaretDownFilled,
   IconCaretRightFilled,
@@ -17,16 +18,15 @@ import {
   IconFileText,
   IconMessage,
   IconMoodSmile,
-  IconNotes,
   IconPencil,
-  IconRepeat
+  IconRepeat,
+  IconSend,
+  IconX
 } from "@tabler/icons-react"
 import Image from "next/image"
 import { FC, useContext, useEffect, useRef, useState } from "react"
 import { BranchElbow } from "./thread-connector"
 import { MessageMarkdown } from "./message-markdown"
-import { FileIcon } from "../ui/file-icon"
-import { FilePreview } from "../ui/file-preview"
 import { TextareaAutosize } from "../ui/textarea-autosize"
 import { WithTooltip } from "../ui/with-tooltip"
 import { ModelIcon } from "../models/model-icon"
@@ -39,8 +39,8 @@ interface ThreadedMessageProps {
   depth?: number
   /** Whether this node is the last child of its parent */
   isLastSibling?: boolean
-  /** Called when the user submits an "Add Note to this Context" reply */
-  onAddNote: (parentId: string, noteText: string) => void
+  /** Called when the user replies in-thread (via swipe-left on agent message or reply action) */
+  onReplyInThread: (parentId: string, replyText: string) => void
   onStartEdit: (message: Tables<"messages">) => void
   onCancelEdit: () => void
   onSubmitEdit: (value: string, sequenceNumber: number) => void
@@ -52,7 +52,7 @@ export const ThreadedMessage: FC<ThreadedMessageProps> = ({
   node,
   depth = 0,
   isLastSibling = true,
-  onAddNote,
+  onReplyInThread,
   onStartEdit,
   onCancelEdit,
   onSubmitEdit,
@@ -78,23 +78,97 @@ export const ThreadedMessage: FC<ThreadedMessageProps> = ({
   const message = chatMessage.message
   const [isHovering, setIsHovering] = useState(false)
   const [isReplying, setIsReplying] = useState(false)
-  const [noteText, setNoteText] = useState("")
+  const [replyText, setReplyText] = useState("")
   const [showChildren, setShowChildren] = useState(true)
   const [editedMessage, setEditedMessage] = useState(message.content)
-  const [showImagePreview, setShowImagePreview] = useState(false)
-  const [selectedImage, setSelectedImage] = useState<MessageImage | null>(null)
-  const [showFileItemPreview, setShowFileItemPreview] = useState(false)
-  const [selectedFileItem, setSelectedFileItem] =
-    useState<Tables<"file_items"> | null>(null)
   const [viewSources, setViewSources] = useState(false)
   const [showCheckmark, setShowCheckmark] = useState(false)
   const editInputRef = useRef<HTMLTextAreaElement>(null)
+
+  // ── Swipe-to-Reply Gesture State (WhatsApp style) ─────────────────────────
+  const [swipeOffset, setSwipeOffset] = useState(0)
+  const [isSwiping, setIsSwiping] = useState(false)
+  const swipeStartX = useRef<number | null>(null)
+  const swipeStartY = useRef<number | null>(null)
+  const isHorizontalSwipe = useRef<boolean | null>(null)
+  const SWIPE_THRESHOLD = 50 // px required to activate reply
 
   const isEditing = editingMessageId === message.id
   const isAssistant = message.role === "assistant"
   const isSystem = message.role === "system"
   const isLastAndGenerating =
     isGenerating && !firstTokenReceived && children.length === 0 && isAssistant
+
+  // ── Swipe Event Handlers ──────────────────────────────────────────────────
+  const handlePointerDown = (e: React.PointerEvent) => {
+    // Swipe-to-reply is active on agent messages
+    if (!isAssistant || isEditing || isGenerating) return
+
+    const target = e.target as HTMLElement
+    // Ignore drag start if touching interactive elements like links, buttons, codeblocks
+    if (
+      target.closest("button") ||
+      target.closest("a") ||
+      target.closest("textarea") ||
+      target.closest("pre") ||
+      target.closest("code")
+    ) {
+      return
+    }
+
+    swipeStartX.current = e.clientX
+    swipeStartY.current = e.clientY
+    isHorizontalSwipe.current = null
+    setIsSwiping(true)
+  }
+
+  const handlePointerMove = (e: React.PointerEvent) => {
+    if (
+      !isSwiping ||
+      swipeStartX.current === null ||
+      swipeStartY.current === null
+    )
+      return
+
+    const deltaX = e.clientX - swipeStartX.current
+    const deltaY = e.clientY - swipeStartY.current
+
+    // Detect direction lock
+    if (isHorizontalSwipe.current === null) {
+      if (Math.abs(deltaX) > 6 || Math.abs(deltaY) > 6) {
+        isHorizontalSwipe.current = Math.abs(deltaX) > Math.abs(deltaY)
+      }
+    }
+
+    if (!isHorizontalSwipe.current) return
+
+    // Swipe left (negative deltaX)
+    if (deltaX < 0) {
+      const clamped = Math.max(-80, deltaX)
+      setSwipeOffset(clamped)
+    } else {
+      setSwipeOffset(0)
+    }
+  }
+
+  const handlePointerEnd = () => {
+    if (!isSwiping) return
+    setIsSwiping(false)
+
+    if (swipeOffset <= -SWIPE_THRESHOLD) {
+      setIsReplying(true)
+      if (typeof navigator !== "undefined" && navigator.vibrate) {
+        try {
+          navigator.vibrate(25)
+        } catch (_) {}
+      }
+    }
+
+    setSwipeOffset(0)
+    swipeStartX.current = null
+    swipeStartY.current = null
+    isHorizontalSwipe.current = null
+  }
 
   // ── Derive model / assistant display data ────────────────────────────────
   const MODEL_DATA = [
@@ -144,11 +218,11 @@ export const ThreadedMessage: FC<ThreadedMessageProps> = ({
     }
   }, [showCheckmark])
 
-  const handleNoteSubmit = (e: React.FormEvent) => {
+  const handleReplySubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    if (!noteText.trim()) return
-    onAddNote(message.id, noteText.trim())
-    setNoteText("")
+    if (!replyText.trim()) return
+    onReplyInThread(message.id, replyText.trim())
+    setReplyText("")
     setIsReplying(false)
   }
 
@@ -161,18 +235,15 @@ export const ThreadedMessage: FC<ThreadedMessageProps> = ({
     }
   }, [isEditing, message.content])
 
-  // ── Indent for nested levels ──────────────────────────────────────────────
-  const indentClass = depth > 0 ? "pl-0" : ""
-
   return (
-    <div className={cn("relative flex w-full flex-col", indentClass)}>
+    <div className="relative flex w-full flex-col">
       {/* ── Main message row ──────────────────────────────────────────────── */}
       <div
         className="group relative flex gap-3"
         onMouseEnter={() => setIsHovering(true)}
         onMouseLeave={() => setIsHovering(false)}
       >
-        {/* Left column: node dot + optional trunk line */}
+        {/* Left column: node dot + vertical trunk line */}
         <div className="relative flex shrink-0 flex-col items-center">
           {/* Node dot */}
           <div
@@ -212,13 +283,13 @@ export const ThreadedMessage: FC<ThreadedMessageProps> = ({
             )}
           </div>
 
-          {/* Vertical trunk line (visible when there are children or reply box) */}
+          {/* Vertical trunk line (visible when there are children or active inline reply) */}
           {(children.length > 0 || isReplying) && showChildren && (
             <div className="mt-1 w-[2px] flex-1 bg-slate-800 dark:bg-slate-800" />
           )}
         </div>
 
-        {/* Right column: message content */}
+        {/* Right column: message content with swipe gesture */}
         <div className="mb-4 min-w-0 flex-1">
           {/* Header */}
           <div className="mb-1 flex items-baseline gap-2">
@@ -245,118 +316,177 @@ export const ThreadedMessage: FC<ThreadedMessageProps> = ({
             )}
           </div>
 
-          {/* Body */}
-          <div className="relative rounded-xl border border-slate-800/80 bg-slate-900/60 px-4 py-3 text-sm leading-relaxed text-slate-200 shadow-sm">
-            {isLastAndGenerating ? (
-              (() => {
-                switch (toolInUse) {
-                  case "none":
-                    return (
-                      <IconCircleFilled className="animate-pulse" size={20} />
-                    )
-                  case "retrieval":
-                    return (
-                      <div className="flex animate-pulse items-center gap-2">
-                        <IconFileText size={18} />
-                        <span>Searching files…</span>
-                      </div>
-                    )
-                  default:
-                    return (
-                      <div className="flex animate-pulse items-center gap-2">
-                        <IconBolt size={18} />
-                        <span>Using {toolInUse}…</span>
-                      </div>
-                    )
-                }
-              })()
-            ) : isEditing ? (
-              <TextareaAutosize
-                textareaRef={editInputRef}
-                className="text-md w-full bg-transparent"
-                value={editedMessage}
-                onValueChange={setEditedMessage}
-                maxRows={20}
-              />
-            ) : (
-              <MessageMarkdown content={message.content} />
+          {/* Message Bubble Container with Swipe-to-Reply */}
+          <div className="relative overflow-visible">
+            {/* Swipe reveal reply indicator on the right edge */}
+            {isAssistant && (
+              <div
+                className={cn(
+                  "pointer-events-none absolute right-2 top-1/2 z-0 flex -translate-y-1/2 items-center justify-center transition-all duration-150",
+                  swipeOffset < -15
+                    ? "scale-100 opacity-100"
+                    : "scale-75 opacity-0"
+                )}
+              >
+                <div
+                  className={cn(
+                    "flex size-8 items-center justify-center rounded-full border shadow-lg transition-all",
+                    swipeOffset <= -SWIPE_THRESHOLD
+                      ? "scale-110 border-cyan-300 bg-cyan-500 text-slate-950 shadow-cyan-500/40"
+                      : "border-slate-700 bg-slate-800 text-slate-300"
+                  )}
+                >
+                  <IconArrowBackUp size={16} />
+                </div>
+              </div>
             )}
 
-            {/* Action toolbar — top-right, hover-revealed */}
+            {/* Draggable / Swipable Bubble */}
             <div
               className={cn(
-                "absolute right-2 top-2 flex items-center gap-1.5 transition-opacity",
-                isHovering || isEditing ? "opacity-100" : "opacity-0"
+                "relative z-[1] select-none rounded-xl border border-slate-800/80 bg-slate-900/60 px-4 py-3 text-sm leading-relaxed text-slate-200 shadow-sm transition-transform",
+                isAssistant && "cursor-grab touch-pan-y active:cursor-grabbing"
               )}
+              style={{
+                transform: `translateX(${swipeOffset}px)`,
+                transition: isSwiping
+                  ? "none"
+                  : "transform 0.22s cubic-bezier(0.16, 1, 0.3, 1)"
+              }}
+              onPointerDown={handlePointerDown}
+              onPointerMove={handlePointerMove}
+              onPointerUp={handlePointerEnd}
+              onPointerCancel={handlePointerEnd}
             >
-              {isEditing ? (
-                <>
-                  <button
-                    className="rounded-md border border-slate-700 bg-slate-800 px-2 py-1 text-xs text-slate-200 hover:bg-slate-700"
-                    onClick={() =>
-                      onSubmitEdit(editedMessage, message.sequence_number)
-                    }
-                  >
-                    Save
-                  </button>
-                  <button
-                    className="rounded-md border border-slate-700 bg-slate-800 px-2 py-1 text-xs text-slate-400 hover:bg-slate-700"
-                    onClick={onCancelEdit}
-                  >
-                    Cancel
-                  </button>
-                </>
-              ) : (
-                <>
-                  {/* Copy */}
-                  <WithTooltip
-                    side="top"
-                    delayDuration={600}
-                    display={<div>Copy</div>}
-                    trigger={
-                      showCheckmark ? (
-                        <IconCheck size={15} className="text-emerald-400" />
-                      ) : (
-                        <IconCopy
-                          size={15}
-                          className="cursor-pointer text-slate-400 hover:text-slate-200"
-                          onClick={handleCopy}
-                        />
+              {isLastAndGenerating ? (
+                (() => {
+                  switch (toolInUse) {
+                    case "none":
+                      return (
+                        <IconCircleFilled className="animate-pulse" size={20} />
                       )
-                    }
-                  />
-                  {/* Edit (user only) */}
-                  {!isAssistant && !isSystem && (
-                    <WithTooltip
-                      side="top"
-                      delayDuration={600}
-                      display={<div>Edit</div>}
-                      trigger={
-                        <IconEdit
-                          size={15}
-                          className="cursor-pointer text-slate-400 hover:text-slate-200"
-                          onClick={() => onStartEdit(message)}
-                        />
-                      }
-                    />
-                  )}
-                  {/* Regenerate (last assistant) */}
-                  {isAssistant && !isGenerating && (
-                    <WithTooltip
-                      side="top"
-                      delayDuration={600}
-                      display={<div>Regenerate</div>}
-                      trigger={
-                        <IconRepeat
-                          size={15}
-                          className="cursor-pointer text-slate-400 hover:text-slate-200"
-                          onClick={() => onRegenerate([message])}
-                        />
-                      }
-                    />
-                  )}
-                </>
+                    case "retrieval":
+                      return (
+                        <div className="flex animate-pulse items-center gap-2">
+                          <IconFileText size={18} />
+                          <span>Searching files…</span>
+                        </div>
+                      )
+                    default:
+                      return (
+                        <div className="flex animate-pulse items-center gap-2">
+                          <IconBolt size={18} />
+                          <span>Using {toolInUse}…</span>
+                        </div>
+                      )
+                  }
+                })()
+              ) : isEditing ? (
+                <TextareaAutosize
+                  textareaRef={editInputRef}
+                  className="text-md w-full bg-transparent"
+                  value={editedMessage}
+                  onValueChange={setEditedMessage}
+                  maxRows={20}
+                />
+              ) : (
+                <MessageMarkdown content={message.content} />
               )}
+
+              {/* Action toolbar — top-right, hover-revealed */}
+              <div
+                className={cn(
+                  "absolute right-2 top-2 z-10 flex items-center gap-1.5 transition-opacity",
+                  isHovering || isEditing ? "opacity-100" : "opacity-0"
+                )}
+              >
+                {isEditing ? (
+                  <>
+                    <button
+                      className="rounded-md border border-slate-700 bg-slate-800 px-2 py-1 text-xs text-slate-200 hover:bg-slate-700"
+                      onClick={() =>
+                        onSubmitEdit(editedMessage, message.sequence_number)
+                      }
+                    >
+                      Save
+                    </button>
+                    <button
+                      className="rounded-md border border-slate-700 bg-slate-800 px-2 py-1 text-xs text-slate-400 hover:bg-slate-700"
+                      onClick={onCancelEdit}
+                    >
+                      Cancel
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    {/* Reply in-thread button (for desktop click or swipe affordance) */}
+                    {isAssistant && !isGenerating && (
+                      <WithTooltip
+                        side="top"
+                        delayDuration={600}
+                        display={<div>Reply in thread (or swipe left)</div>}
+                        trigger={
+                          <IconArrowBackUp
+                            size={15}
+                            className="cursor-pointer text-slate-400 transition-colors hover:text-cyan-400"
+                            onClick={() => setIsReplying(r => !r)}
+                          />
+                        }
+                      />
+                    )}
+
+                    {/* Copy */}
+                    <WithTooltip
+                      side="top"
+                      delayDuration={600}
+                      display={<div>Copy</div>}
+                      trigger={
+                        showCheckmark ? (
+                          <IconCheck size={15} className="text-emerald-400" />
+                        ) : (
+                          <IconCopy
+                            size={15}
+                            className="cursor-pointer text-slate-400 hover:text-slate-200"
+                            onClick={handleCopy}
+                          />
+                        )
+                      }
+                    />
+
+                    {/* Edit (user only) */}
+                    {!isAssistant && !isSystem && (
+                      <WithTooltip
+                        side="top"
+                        delayDuration={600}
+                        display={<div>Edit</div>}
+                        trigger={
+                          <IconEdit
+                            size={15}
+                            className="cursor-pointer text-slate-400 hover:text-slate-200"
+                            onClick={() => onStartEdit(message)}
+                          />
+                        }
+                      />
+                    )}
+
+                    {/* Regenerate (last assistant) */}
+                    {isAssistant && !isGenerating && (
+                      <WithTooltip
+                        side="top"
+                        delayDuration={600}
+                        display={<div>Regenerate</div>}
+                        trigger={
+                          <IconRepeat
+                            size={15}
+                            className="cursor-pointer text-slate-400 hover:text-slate-200"
+                            onClick={() => onRegenerate([message])}
+                          />
+                        }
+                      />
+                    )}
+                  </>
+                )}
+              </div>
             </div>
           </div>
 
@@ -398,25 +528,11 @@ export const ThreadedMessage: FC<ThreadedMessageProps> = ({
             </div>
           )}
 
-          {/* Thread controls: reply toggle + children count */}
-          <div className="mt-2 flex items-center gap-3 text-xs text-slate-500">
-            {/* "Add Note to this Context" button */}
-            {!isSystem && !isGenerating && (
+          {/* Thread controls: replies count toggle (No "Add Note" button) */}
+          {children.length > 0 && (
+            <div className="mt-2 flex items-center justify-end text-xs text-slate-500">
               <button
-                className="flex items-center gap-1 rounded-md px-2 py-1 text-cyan-400 transition-colors hover:bg-cyan-950/60 hover:text-cyan-300"
-                onClick={() => setIsReplying(r => !r)}
-              >
-                <IconNotes size={13} />
-                <span>
-                  {isReplying ? "Cancel" : "Add Note to this Context"}
-                </span>
-              </button>
-            )}
-
-            {/* Children toggle */}
-            {children.length > 0 && (
-              <button
-                className="ml-auto flex items-center gap-1 font-mono text-[11px] text-cyan-500 hover:underline"
+                className="flex items-center gap-1 font-mono text-[11px] text-cyan-500 hover:underline"
                 onClick={() => setShowChildren(s => !s)}
               >
                 <IconMessage size={12} />
@@ -424,55 +540,77 @@ export const ThreadedMessage: FC<ThreadedMessageProps> = ({
                   ? `Hide ${children.length} ${children.length === 1 ? "reply" : "replies"}`
                   : `${children.length} ${children.length === 1 ? "reply" : "replies"} ›`}
               </button>
-            )}
-          </div>
+            </div>
+          )}
 
-          {/* Inline reply input */}
+          {/* Inline reply form (activated via swipe-left on agent message or reply action) */}
           {isReplying && (
             <form
-              onSubmit={handleNoteSubmit}
-              className="mt-3 flex items-start gap-2 rounded-lg border border-cyan-500/30 bg-slate-950/60 p-2"
+              onSubmit={handleReplySubmit}
+              className="animate-in fade-in slide-in-from-top-2 mt-3 flex flex-col gap-2 rounded-xl border border-cyan-500/40 bg-slate-950/85 p-3 shadow-lg shadow-cyan-950/30 duration-150"
             >
-              <div className="flex size-7 shrink-0 items-center justify-center rounded-full border border-orange-400/60 bg-slate-900">
-                {profile?.image_url ? (
-                  <Image
-                    src={profile.image_url}
-                    alt="you"
-                    height={28}
-                    width={28}
-                    className="rounded-full object-cover"
-                  />
-                ) : (
-                  <IconMoodSmile size={14} className="text-orange-400" />
-                )}
+              <div className="flex items-center justify-between border-b border-slate-800/80 pb-2 text-xs text-cyan-400">
+                <span className="flex items-center gap-1.5 font-medium">
+                  <IconArrowBackUp size={14} className="text-cyan-400" />
+                  Replying in thread to{" "}
+                  {isAssistant
+                    ? selectedAssistant?.name ??
+                      MODEL_DATA?.modelName ??
+                      "Agent"
+                    : "message"}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setIsReplying(false)}
+                  className="rounded p-0.5 text-slate-400 transition-colors hover:bg-slate-800 hover:text-slate-200"
+                >
+                  <IconX size={14} />
+                </button>
               </div>
-              <textarea
-                value={noteText}
-                onChange={e => setNoteText(e.target.value)}
-                onKeyDown={e => {
-                  if (e.key === "Enter" && !e.shiftKey) {
-                    e.preventDefault()
-                    handleNoteSubmit(e as any)
-                  }
-                }}
-                placeholder={`Add a note in this context…`}
-                rows={2}
-                autoFocus
-                className="flex-1 resize-none bg-transparent text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none"
-              />
-              <button
-                type="submit"
-                disabled={!noteText.trim()}
-                className="shrink-0 rounded-lg bg-gradient-to-br from-cyan-500 to-indigo-500 px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition-opacity hover:brightness-110 disabled:opacity-40"
-              >
-                Send
-              </button>
+
+              <div className="flex items-start gap-2 pt-1">
+                <div className="flex size-7 shrink-0 items-center justify-center rounded-full border border-orange-400/60 bg-slate-900">
+                  {profile?.image_url ? (
+                    <Image
+                      src={profile.image_url}
+                      alt="you"
+                      height={28}
+                      width={28}
+                      className="rounded-full object-cover"
+                    />
+                  ) : (
+                    <IconMoodSmile size={14} className="text-orange-400" />
+                  )}
+                </div>
+                <textarea
+                  value={replyText}
+                  onChange={e => setReplyText(e.target.value)}
+                  onKeyDown={e => {
+                    if (e.key === "Enter" && !e.shiftKey) {
+                      e.preventDefault()
+                      handleReplySubmit(e as any)
+                    }
+                  }}
+                  placeholder="Type a reply in this thread... (Enter to send)"
+                  rows={2}
+                  autoFocus
+                  className="flex-1 resize-none bg-transparent text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none"
+                />
+                <button
+                  type="submit"
+                  disabled={!replyText.trim()}
+                  className="flex shrink-0 items-center gap-1 rounded-lg bg-gradient-to-br from-cyan-500 to-indigo-500 px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition-opacity hover:brightness-110 disabled:opacity-40"
+                >
+                  <IconSend size={12} />
+                  <span>Reply</span>
+                </button>
+              </div>
             </form>
           )}
         </div>
       </div>
 
-      {/* ── Nested children ───────────────────────────────────────────────── */}
+      {/* ── Nested children branches ────────────────────────────────────────── */}
       {showChildren && children.length > 0 && (
         <div className="ml-[18px] border-l-2 border-slate-800 pl-5">
           {children.map((child, idx) => (
@@ -481,7 +619,7 @@ export const ThreadedMessage: FC<ThreadedMessageProps> = ({
               node={child}
               depth={depth + 1}
               isLastSibling={idx === children.length - 1}
-              onAddNote={onAddNote}
+              onReplyInThread={onReplyInThread}
               onStartEdit={onStartEdit}
               onCancelEdit={onCancelEdit}
               onSubmitEdit={onSubmitEdit}
