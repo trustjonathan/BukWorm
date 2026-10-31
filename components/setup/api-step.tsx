@@ -12,16 +12,16 @@ export const APIStep: FC<APIStepProps> = ({
   onGoogleGeminiAPIKeyChange
 }) => (
   <div className="space-y-2">
-    <Label htmlFor="gemini-api-key">Optional Gemini API key</Label>
+    <Label htmlFor="gemini-api-key">Optional Matrix AI key</Label>
     <Input
       id="gemini-api-key"
-      placeholder="Gemini API Key"
+      placeholder="Matrix API Key"
       type="password"
       value={googleGeminiAPIKey}
       onChange={event => onGoogleGeminiAPIKeyChange(event.target.value)}
     />
     <p className="text-muted-foreground text-xs">
-      You can skip this if BukWorm already has Gemini access configured.
+      You can skip this if Matrix AI already has access configured.
     </p>
   </div>
 )

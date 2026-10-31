@@ -1,16 +1,28 @@
 {
-  "short_name": "BukWorm",
-  "name": "BukWorm",
+  "short_name": "Matrix AI",
+  "name": "Matrix AI",
   "icons": [
     {
-      "src": "/bukworm-icon.svg",
-      "type": "image/svg+xml",
-      "sizes": "any",
+      "src": "/icon-192x192.png",
+      "type": "image/png",
+      "sizes": "192x192",
       "purpose": "any maskable"
+    },
+    {
+      "src": "/icon-512x512.png",
+      "type": "image/png",
+      "sizes": "512x512",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/matrix.png",
+      "type": "image/png",
+      "sizes": "512x512",
+      "purpose": "any"
     }
   ],
   "start_url": "/",
   "display": "standalone",
-  "theme_color": "#eff6ff",
-  "background_color": "#f8fafc"
+  "theme_color": "#0f172a",
+  "background_color": "#020617"
 }

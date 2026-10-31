@@ -32,7 +32,7 @@ export const CommandK: FC<CommandKProps> = ({}) => {
 
       if (!response.ok) {
         throw new Error(
-          data.message || "Gemini could not process that command."
+          data.message || "Matrix AI could not process that command."
         )
       }
 
@@ -91,7 +91,7 @@ export const CommandK: FC<CommandKProps> = ({}) => {
               </div>
             </div>
           ) : (
-            <div>Gemini is not configured for this BukWorm workspace.</div>
+            <div>Matrix AI is not configured for this workspace.</div>
           )}
         </DialogContent>
       </Dialog>

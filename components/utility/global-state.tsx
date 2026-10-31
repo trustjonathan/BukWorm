@@ -129,6 +129,19 @@ export const GlobalState: FC<GlobalStateProps> = ({ children }) => {
     null
   )
 
+  // SIDEBAR STORE
+  const [showSidebar, setShowSidebar] = useState<boolean>(true)
+
+  useEffect(() => {
+    const saved =
+      typeof window !== "undefined" ? localStorage.getItem("showSidebar") : null
+    if (saved !== null) {
+      setShowSidebar(saved === "true")
+    } else if (typeof window !== "undefined" && window.innerWidth < 1024) {
+      setShowSidebar(false)
+    }
+  }, [])
+
   useEffect(() => {
     ;(async () => {
       const profile = await fetchStartingData()
@@ -319,7 +332,11 @@ export const GlobalState: FC<GlobalStateProps> = ({ children }) => {
 
         // THREADED CHAT STORE
         replyingToParentId,
-        setReplyingToParentId
+        setReplyingToParentId,
+
+        // SIDEBAR STORE
+        showSidebar,
+        setShowSidebar
       }}
     >
       {children}

@@ -155,7 +155,7 @@ export default function SetupPage() {
       case 2:
         return (
           <StepContainer
-            stepDescription="Your account is ready. BukWorm is powered by Gemini."
+            stepDescription="Your account is ready. Matrix AI is powered by Matrix."
             stepNum={currentStep}
             stepTitle="Setup Complete"
             onShouldProceed={handleShouldProceed}

@@ -331,7 +331,7 @@ export const useChatHandler = () => {
       )
 
       setChatMessages([...history, userMessage, ...pendingAgentMessages])
-      setToolInUse("Gemini")
+      setToolInUse("Matrix")
 
       const responses = await Promise.allSettled(
         validAgentRequests.map(async ({ agent, modelData }, index) => {

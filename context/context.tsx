@@ -144,6 +144,10 @@ interface ChatbotUIContext {
   /** The message id that the user is currently replying to in a branch. Null = root input. */
   replyingToParentId: string | null
   setReplyingToParentId: Dispatch<SetStateAction<string | null>>
+
+  // SIDEBAR STORE
+  showSidebar: boolean
+  setShowSidebar: Dispatch<SetStateAction<boolean>>
 }
 
 export const ChatbotUIContext = createContext<ChatbotUIContext>({
@@ -275,5 +279,9 @@ export const ChatbotUIContext = createContext<ChatbotUIContext>({
 
   // THREADED CHAT STORE
   replyingToParentId: null,
-  setReplyingToParentId: () => {}
+  setReplyingToParentId: () => {},
+
+  // SIDEBAR STORE
+  showSidebar: true,
+  setShowSidebar: () => {}
 })

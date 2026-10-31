@@ -76,7 +76,7 @@ export const ModelSelect: FC<ModelSelectProps> = ({
       >
         {allModels.length === 0 ? (
           <div className="rounded text-sm font-bold">
-            Gemini is unavailable. Check your connection or Gemini setup.
+            Matrix AI is unavailable. Check your connection or Matrix AI setup.
           </div>
         ) : (
           <Button

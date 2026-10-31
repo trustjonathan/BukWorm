@@ -192,8 +192,8 @@ export const ThreadedMessage: FC<ThreadedMessageProps> = ({
 
   // ── Node dot colors ───────────────────────────────────────────────────────
   const nodeDotClass = isAssistant
-    ? "border-cyan-400 text-cyan-400 bg-slate-900"
-    : "border-orange-400 text-orange-400 bg-slate-900"
+    ? "border-cyan-500 text-cyan-600 bg-white dark:border-cyan-400 dark:text-cyan-400 dark:bg-slate-900"
+    : "border-orange-500 text-orange-600 bg-white dark:border-orange-400 dark:text-orange-400 dark:bg-slate-900"
 
   // ── Handlers ─────────────────────────────────────────────────────────────
   const handleCopy = () => {
@@ -264,10 +264,12 @@ export const ThreadedMessage: FC<ThreadedMessageProps> = ({
                   className="rounded-full object-cover"
                 />
               ) : (
-                <ModelIcon
-                  provider={modelDetails?.provider ?? "custom"}
-                  height={18}
-                  width={18}
+                <Image
+                  src="/matrix.png"
+                  alt="Matrix AI"
+                  height={22}
+                  width={22}
+                  className="rounded-full object-contain p-0.5"
                 />
               )
             ) : profile?.image_url ? (
@@ -285,7 +287,7 @@ export const ThreadedMessage: FC<ThreadedMessageProps> = ({
 
           {/* Vertical trunk line (visible when there are children or active inline reply) */}
           {(children.length > 0 || isReplying) && showChildren && (
-            <div className="mt-1 w-[2px] flex-1 bg-slate-800 dark:bg-slate-800" />
+            <div className="mt-1 w-[2px] flex-1 bg-slate-200 dark:bg-slate-800" />
           )}
         </div>
 
@@ -294,22 +296,22 @@ export const ThreadedMessage: FC<ThreadedMessageProps> = ({
           {/* Header */}
           <div className="mb-1 flex items-baseline gap-2">
             {isSystem ? (
-              <span className="text-sm font-semibold text-slate-300">
+              <span className="text-sm font-semibold text-slate-700 dark:text-slate-300">
                 System Prompt
               </span>
             ) : (
               <>
-                <span className="text-sm font-semibold text-slate-200">
+                <span className="text-sm font-semibold text-slate-800 dark:text-slate-200">
                   {isAssistant
                     ? message.assistant_id
                       ? assistants.find(a => a.id === message.assistant_id)
-                          ?.name ?? "Assistant"
-                      : selectedAssistant?.name ?? MODEL_DATA?.modelName
+                          ?.name ?? "Matrix AI"
+                      : "Matrix AI"
                     : profile?.display_name ?? profile?.username ?? "You"}
                 </span>
                 {isAssistant && (
-                  <span className="rounded border border-cyan-800 bg-cyan-950 px-1.5 py-0.5 font-mono text-[10px] text-cyan-400">
-                    AGENT NODE
+                  <span className="rounded border border-cyan-300 bg-cyan-50 px-1.5 py-0.5 font-mono text-[10px] text-cyan-700 dark:border-cyan-800 dark:bg-cyan-950 dark:text-cyan-400">
+                    MATRIX NODE
                   </span>
                 )}
               </>
@@ -344,7 +346,7 @@ export const ThreadedMessage: FC<ThreadedMessageProps> = ({
             {/* Draggable / Swipable Bubble */}
             <div
               className={cn(
-                "relative z-[1] select-none rounded-xl border border-slate-800/80 bg-slate-900/60 px-4 py-3 text-sm leading-relaxed text-slate-200 shadow-sm transition-transform",
+                "relative z-[1] select-none rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm leading-relaxed text-slate-800 shadow-sm transition-transform dark:border-slate-800/80 dark:bg-slate-900/60 dark:text-slate-100",
                 isAssistant && "cursor-grab touch-pan-y active:cursor-grabbing"
               )}
               style={{
@@ -403,7 +405,7 @@ export const ThreadedMessage: FC<ThreadedMessageProps> = ({
                 {isEditing ? (
                   <>
                     <button
-                      className="rounded-md border border-slate-700 bg-slate-800 px-2 py-1 text-xs text-slate-200 hover:bg-slate-700"
+                      className="rounded-md border border-slate-300 bg-slate-100 px-2 py-1 text-xs text-slate-800 hover:bg-slate-200 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
                       onClick={() =>
                         onSubmitEdit(editedMessage, message.sequence_number)
                       }
@@ -411,7 +413,7 @@ export const ThreadedMessage: FC<ThreadedMessageProps> = ({
                       Save
                     </button>
                     <button
-                      className="rounded-md border border-slate-700 bg-slate-800 px-2 py-1 text-xs text-slate-400 hover:bg-slate-700"
+                      className="rounded-md border border-slate-300 bg-slate-100 px-2 py-1 text-xs text-slate-600 hover:bg-slate-200 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400 dark:hover:bg-slate-700"
                       onClick={onCancelEdit}
                     >
                       Cancel
@@ -547,29 +549,30 @@ export const ThreadedMessage: FC<ThreadedMessageProps> = ({
           {isReplying && (
             <form
               onSubmit={handleReplySubmit}
-              className="animate-in fade-in slide-in-from-top-2 mt-3 flex flex-col gap-2 rounded-xl border border-cyan-500/40 bg-slate-950/85 p-3 shadow-lg shadow-cyan-950/30 duration-150"
+              className="animate-in fade-in slide-in-from-top-2 mt-3 flex flex-col gap-2 rounded-xl border border-cyan-400/50 bg-white p-3 shadow-lg shadow-cyan-900/5 duration-150 dark:border-cyan-500/40 dark:bg-slate-950/85 dark:shadow-cyan-950/30"
             >
-              <div className="flex items-center justify-between border-b border-slate-800/80 pb-2 text-xs text-cyan-400">
+              <div className="flex items-center justify-between border-b border-slate-200 pb-2 text-xs text-cyan-600 dark:border-slate-800/80 dark:text-cyan-400">
                 <span className="flex items-center gap-1.5 font-medium">
-                  <IconArrowBackUp size={14} className="text-cyan-400" />
+                  <IconArrowBackUp
+                    size={14}
+                    className="text-cyan-600 dark:text-cyan-400"
+                  />
                   Replying in thread to{" "}
                   {isAssistant
-                    ? selectedAssistant?.name ??
-                      MODEL_DATA?.modelName ??
-                      "Agent"
+                    ? selectedAssistant?.name ?? "Matrix AI"
                     : "message"}
                 </span>
                 <button
                   type="button"
                   onClick={() => setIsReplying(false)}
-                  className="rounded p-0.5 text-slate-400 transition-colors hover:bg-slate-800 hover:text-slate-200"
+                  className="rounded p-0.5 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800 dark:hover:text-slate-200"
                 >
                   <IconX size={14} />
                 </button>
               </div>
 
               <div className="flex items-start gap-2 pt-1">
-                <div className="flex size-7 shrink-0 items-center justify-center rounded-full border border-orange-400/60 bg-slate-900">
+                <div className="flex size-7 shrink-0 items-center justify-center rounded-full border border-orange-400/60 bg-slate-100 dark:bg-slate-900">
                   {profile?.image_url ? (
                     <Image
                       src={profile.image_url}
@@ -579,7 +582,10 @@ export const ThreadedMessage: FC<ThreadedMessageProps> = ({
                       className="rounded-full object-cover"
                     />
                   ) : (
-                    <IconMoodSmile size={14} className="text-orange-400" />
+                    <IconMoodSmile
+                      size={14}
+                      className="text-orange-500 dark:text-orange-400"
+                    />
                   )}
                 </div>
                 <textarea
@@ -594,7 +600,7 @@ export const ThreadedMessage: FC<ThreadedMessageProps> = ({
                   placeholder="Type a reply in this thread... (Enter to send)"
                   rows={2}
                   autoFocus
-                  className="flex-1 resize-none bg-transparent text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none"
+                  className="flex-1 resize-none bg-transparent text-sm text-slate-800 placeholder:text-slate-400 focus:outline-none dark:text-slate-100 dark:placeholder:text-slate-500"
                 />
                 <button
                   type="submit"
@@ -612,7 +618,7 @@ export const ThreadedMessage: FC<ThreadedMessageProps> = ({
 
       {/* ── Nested children branches ────────────────────────────────────────── */}
       {showChildren && children.length > 0 && (
-        <div className="ml-[18px] border-l-2 border-slate-800 pl-5">
+        <div className="ml-[18px] border-l-2 border-slate-200 pl-5 dark:border-slate-800">
           {children.map((child, idx) => (
             <ThreadedMessage
               key={child.chatMessage.message.id}

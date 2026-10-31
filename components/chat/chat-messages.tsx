@@ -45,9 +45,9 @@ export const ChatMessages: FC<ChatMessagesProps> = ({}) => {
 
   return (
     <div className="mx-auto w-full max-w-2xl space-y-1 px-4 py-6">
-      <div className="mb-5 font-mono text-xs uppercase tracking-wider text-cyan-400">
+      <div className="mb-5 font-mono text-xs uppercase tracking-wider text-cyan-700 dark:text-cyan-400">
         Comments (and Agent Notes)
-        <span className="ml-2 rounded bg-slate-800 px-1.5 py-0.5 text-slate-400">
+        <span className="ml-2 rounded bg-slate-200 px-1.5 py-0.5 text-slate-700 dark:bg-slate-800 dark:text-slate-400">
           {chatMessages.length}
         </span>
       </div>

@@ -78,12 +78,13 @@ export const ModelIcon: FC<ModelIconProps> = ({
       )
     case "google":
       return (
-        <GoogleSVG
+        <Image
           className={cn(
-            "rounded-sm bg-white p-1 text-black",
-            props.className,
-            theme === "dark" ? "bg-white" : "border-DEFAULT border-black"
+            "rounded-full bg-white object-contain p-0.5",
+            props.className
           )}
+          src="/matrix.png"
+          alt="Matrix AI"
           width={width}
           height={height}
         />

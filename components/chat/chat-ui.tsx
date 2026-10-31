@@ -12,13 +12,15 @@ import useHotkey from "@/lib/hooks/use-hotkey"
 import { LLMID, MessageImage } from "@/types"
 import { DEFAULT_GOOGLE_MODEL_ID } from "@/lib/models/llm/google-llm-list"
 import {
-  IconBook,
   IconBolt,
   IconCircleFilled,
+  IconLayoutSidebar,
   IconSparkles
 } from "@tabler/icons-react"
+import Image from "next/image"
 import { useParams } from "next/navigation"
 import { FC, useContext, useEffect, useState } from "react"
+import { Button } from "../ui/button"
 import { ChatHelp } from "./chat-help"
 import { useScroll } from "./chat-hooks/use-scroll"
 import { ChatInput } from "./chat-input"
@@ -50,7 +52,9 @@ export const ChatUI: FC<ChatUIProps> = ({}) => {
     setUseRetrieval,
     setSelectedTools,
     availableHostedModels,
-    chatSettings
+    chatSettings,
+    showSidebar,
+    setShowSidebar
   } = useContext(ChatbotUIContext)
 
   const { handleNewChat, handleFocusChatInput } = useChatHandler()
@@ -200,78 +204,49 @@ export const ChatUI: FC<ChatUIProps> = ({}) => {
   }
 
   return (
-    <div className="relative flex h-full min-w-0 overflow-hidden bg-gradient-to-br from-sky-50 via-white to-violet-50 text-slate-800 dark:bg-[#070a13] dark:bg-none dark:text-slate-100">
+    <div className="relative flex h-full min-w-0 overflow-hidden bg-slate-50 text-slate-800 transition-colors dark:bg-[#070a13] dark:text-slate-100">
       <div
         className="pointer-events-none absolute inset-0 overflow-hidden"
         aria-hidden="true"
       >
-        <div className="absolute -left-40 -top-48 size-[32rem] rounded-full bg-cyan-300/20 blur-3xl dark:bg-cyan-500/10" />
-        <div className="absolute -bottom-56 -right-32 size-[34rem] rounded-full bg-violet-300/20 blur-3xl dark:bg-indigo-500/10" />
+        <div className="absolute -left-40 -top-48 size-[32rem] rounded-full bg-cyan-300/15 blur-3xl dark:bg-cyan-500/10" />
+        <div className="absolute -bottom-56 -right-32 size-[34rem] rounded-full bg-indigo-300/15 blur-3xl dark:bg-indigo-500/10" />
       </div>
 
-      <aside className="relative z-10 hidden w-64 shrink-0 flex-col border-r border-sky-200/70 bg-white/55 p-5 backdrop-blur-xl xl:flex dark:border-slate-800/80 dark:bg-slate-950/45">
-        <div className="mb-8 flex items-center gap-3">
-          <div className="flex size-11 items-center justify-center rounded-2xl border border-cyan-300/70 bg-gradient-to-br from-cyan-100 to-indigo-100 text-indigo-600 shadow-lg shadow-cyan-500/10 dark:border-cyan-400/30 dark:from-cyan-400/15 dark:to-indigo-400/15 dark:text-cyan-200">
-            <IconBook size={23} stroke={1.8} />
-          </div>
-          <div>
-            <div className="font-semibold tracking-tight">BukWorm</div>
-            <div className="text-xs text-slate-500 dark:text-slate-400">
-              Your Gemini workspace
-            </div>
-          </div>
-        </div>
-
-        <div className="rounded-2xl border border-cyan-200/80 bg-white/70 p-4 shadow-sm shadow-cyan-900/5 dark:border-cyan-400/20 dark:bg-slate-900/65">
-          <div className="flex items-center gap-2 text-sm font-semibold">
-            <IconCircleFilled
-              className={
-                availableHostedModels.some(model => model.provider === "google")
-                  ? "text-emerald-500"
-                  : "text-amber-500"
-              }
-              size={9}
-            />
-            Gemini{" "}
-            {availableHostedModels.some(model => model.provider === "google")
-              ? "ready"
-              : "connecting"}
-          </div>
-          <p className="mt-2 text-xs leading-relaxed text-slate-600 dark:text-slate-400">
-            {chatSettings?.model || DEFAULT_GOOGLE_MODEL_ID}
-          </p>
-        </div>
-
-        <div className="mt-3 rounded-2xl border border-indigo-200/70 bg-gradient-to-br from-white/80 to-violet-50/80 p-4 dark:border-indigo-400/15 dark:from-slate-900/70 dark:to-indigo-950/35">
-          <IconBolt
-            className="mb-2 text-indigo-500 dark:text-cyan-300"
-            size={18}
-          />
-          <div className="text-sm font-semibold">Fast by default</div>
-          <p className="mt-1 text-xs leading-relaxed text-slate-600 dark:text-slate-400">
-            Gemini Flash-Lite keeps everyday conversations responsive.
-          </p>
-        </div>
-
-        <div className="mt-auto rounded-2xl border border-sky-200/70 bg-white/60 p-4 text-xs leading-relaxed text-slate-500 dark:border-slate-800 dark:bg-slate-900/40 dark:text-slate-400">
-          Your conversation history stays available as your chat grows.
-        </div>
-      </aside>
-
       <main className="relative z-10 flex min-w-0 flex-1 flex-col">
-        <header className="flex min-h-[68px] items-center justify-between gap-2 border-b border-sky-200/70 bg-white/45 px-3 backdrop-blur-xl sm:gap-3 sm:px-6 dark:border-slate-800/80 dark:bg-slate-950/30">
-          <div className="min-w-0 flex-1">
-            <div className="truncate text-sm font-semibold text-slate-800 dark:text-slate-100">
-              {selectedChat?.name || "New chat"}
-            </div>
-            <div className="mt-1 hidden items-center gap-1.5 text-xs text-slate-500 sm:flex dark:text-slate-400">
-              <IconSparkles
-                size={13}
-                className="text-cyan-600 dark:text-cyan-300"
-              />
-              Gemini-powered · Streaming responses
+        <header className="flex min-h-[64px] items-center justify-between gap-2 border-b border-slate-200/80 bg-white/70 px-3 backdrop-blur-xl sm:gap-3 sm:px-6 dark:border-slate-800/80 dark:bg-slate-950/40">
+          <div className="flex min-w-0 flex-1 items-center gap-2.5">
+            {/* Sidebar toggle button (visible on all screens) */}
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => {
+                setShowSidebar(prev => {
+                  const next = !prev
+                  localStorage.setItem("showSidebar", String(next))
+                  return next
+                })
+              }}
+              className="size-9 shrink-0 rounded-xl text-slate-600 hover:bg-slate-200/80 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-100"
+              aria-label="Toggle sidebar"
+            >
+              <IconLayoutSidebar size={20} />
+            </Button>
+
+            <div className="min-w-0 flex-1">
+              <div className="truncate text-sm font-semibold text-slate-900 dark:text-slate-100">
+                {selectedChat?.name || "Matrix AI"}
+              </div>
+              <div className="mt-0.5 hidden items-center gap-1.5 text-xs text-slate-500 sm:flex dark:text-slate-400">
+                <IconSparkles
+                  size={13}
+                  className="text-cyan-600 dark:text-cyan-400"
+                />
+                Matrix-powered · Streaming responses
+              </div>
             </div>
           </div>
+
           <div className="flex shrink-0 items-center gap-1 sm:gap-2">
             <QuickSettings />
             <ChatSettings />
@@ -282,16 +257,23 @@ export const ChatUI: FC<ChatUIProps> = ({}) => {
         <div className="flex min-h-0 flex-1">
           <div className="relative flex min-w-0 flex-1 flex-col">
             {chatMessages.length === 0 && (
-              <div className="pointer-events-none absolute inset-x-4 top-[27%] z-0 text-center">
-                <div className="mx-auto mb-5 flex size-16 items-center justify-center rounded-3xl border border-cyan-200/80 bg-white/70 text-indigo-600 shadow-xl shadow-cyan-900/10 dark:border-cyan-300/20 dark:bg-slate-900/70 dark:text-cyan-200 dark:shadow-cyan-950/30">
-                  <IconSparkles size={28} stroke={1.6} />
+              <div className="pointer-events-none absolute inset-x-4 top-[24%] z-0 text-center">
+                <div className="mx-auto mb-5 flex size-20 items-center justify-center rounded-[2rem] border border-cyan-200 bg-white p-3 shadow-xl shadow-cyan-900/10 dark:border-cyan-300/20 dark:bg-slate-900 dark:shadow-cyan-950/40">
+                  <Image
+                    src="/matrix.png"
+                    alt="Matrix AI"
+                    width={56}
+                    height={56}
+                    className="object-contain"
+                    priority
+                  />
                 </div>
-                <div className="text-2xl font-semibold tracking-tight text-slate-900 dark:text-slate-100">
-                  A little more insight, instantly.
+                <div className="text-2xl font-bold tracking-tight text-slate-900 dark:text-slate-100">
+                  Matrix AI Workspace
                 </div>
                 <p className="mx-auto mt-2 max-w-lg text-sm leading-relaxed text-slate-600 dark:text-slate-400">
-                  Ask BukWorm anything. Gemini keeps the conversation flowing
-                  with the context of your chat.
+                  Ask Matrix anything. Ready with thoughtful, step-by-step
+                  reasoning and context-aware discussion.
                 </p>
               </div>
             )}

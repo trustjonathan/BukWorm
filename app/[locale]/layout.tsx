@@ -13,10 +13,10 @@ import "katex/dist/katex.min.css"
 import "./globals.css"
 
 const inter = Inter({ subsets: ["latin"] })
-const APP_NAME = "BukWorm"
-const APP_DEFAULT_TITLE = "BukWorm"
-const APP_TITLE_TEMPLATE = "%s - BukWorm"
-const APP_DESCRIPTION = "A thoughtful AI workspace, powered by Gemini."
+const APP_NAME = "Matrix AI"
+const APP_DEFAULT_TITLE = "Matrix AI"
+const APP_TITLE_TEMPLATE = "%s - Matrix AI"
+const APP_DESCRIPTION = "A thoughtful AI workspace, powered by Matrix AI."
 
 interface RootLayoutProps {
   children: ReactNode
@@ -32,6 +32,11 @@ export const metadata: Metadata = {
     template: APP_TITLE_TEMPLATE
   },
   description: APP_DESCRIPTION,
+  icons: {
+    icon: "/matrix.png",
+    shortcut: "/favicon.ico",
+    apple: "/matrix.png"
+  },
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,

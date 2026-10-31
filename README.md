@@ -1,4 +1,4 @@
-# BukWorm
+# Matrix AI
 
 BukWorm is a Gemini-powered AI workspace built on the open-source Chatbot UI project.
 

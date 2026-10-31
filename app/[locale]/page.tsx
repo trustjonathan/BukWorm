@@ -1,6 +1,7 @@
 "use client"
 
-import { IconArrowRight, IconBook, IconSparkles } from "@tabler/icons-react"
+import { IconArrowRight, IconSparkles } from "@tabler/icons-react"
+import Image from "next/image"
 import Link from "next/link"
 
 export default function HomePage() {
@@ -10,20 +11,27 @@ export default function HomePage() {
       <div className="pointer-events-none absolute -bottom-48 -right-36 size-[32rem] rounded-full bg-violet-300/25 blur-3xl dark:bg-violet-500/10" />
 
       <div className="relative flex max-w-2xl flex-col items-center text-center">
-        <div className="mb-6 flex size-20 items-center justify-center rounded-[1.75rem] border border-cyan-200 bg-gradient-to-br from-cyan-100 via-white to-violet-100 text-indigo-600 shadow-2xl shadow-cyan-900/10 dark:border-cyan-300/25 dark:from-cyan-400/15 dark:via-slate-900 dark:to-indigo-400/15 dark:text-cyan-200">
-          <IconBook size={42} stroke={1.5} />
+        <div className="mb-6 flex size-24 items-center justify-center rounded-[2rem] border border-cyan-200 bg-white p-3 shadow-2xl shadow-cyan-900/10 dark:border-cyan-300/25 dark:bg-slate-900 dark:shadow-cyan-950/40">
+          <Image
+            src="/matrix.png"
+            alt="Matrix AI"
+            width={72}
+            height={72}
+            className="object-contain"
+            priority
+          />
         </div>
 
         <div className="flex items-center gap-2 text-5xl font-bold tracking-tight">
-          BukWorm
+          Matrix AI
           <IconSparkles
             className="text-cyan-600 dark:text-cyan-300"
-            size={24}
+            size={26}
           />
         </div>
         <p className="mt-4 max-w-xl text-lg leading-relaxed text-slate-600 dark:text-slate-300">
-          Your ideas, questions, and reading companion — powered by fast,
-          thoughtful Gemini responses.
+          Your intelligent workspace, reading companion, and reasoning assistant
+          — powered by Matrix.
         </p>
 
         <Link

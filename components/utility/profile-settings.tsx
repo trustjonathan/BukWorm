@@ -431,8 +431,9 @@ export const ProfileSettings: FC<ProfileSettingsProps> = ({}) => {
               value="keys"
             >
               <p className="text-muted-foreground text-sm">
-                BukWorm uses Gemini for every conversation. A personal key is
-                optional when this workspace already provides Gemini access.
+                Matrix AI uses advanced intelligence for every conversation. A
+                personal key is optional when this workspace already provides
+                access.
               </p>
 
               <div className="mt-5 space-y-2">
@@ -648,12 +649,14 @@ export const ProfileSettings: FC<ProfileSettingsProps> = ({}) => {
 
               <div className="space-y-1">
                 {envKeyMap["google"] ? (
-                  <Label>Gemini access is configured for BukWorm.</Label>
+                  <Label>
+                    Matrix AI access is configured for this workspace.
+                  </Label>
                 ) : (
                   <>
-                    <Label>Personal Gemini API Key</Label>
+                    <Label>Personal Matrix / Model API Key</Label>
                     <Input
-                      placeholder="Google Gemini API Key"
+                      placeholder="API Key"
                       type="password"
                       value={googleGeminiAPIKey}
                       onChange={e => setGoogleGeminiAPIKey(e.target.value)}
@@ -734,7 +737,7 @@ export const ProfileSettings: FC<ProfileSettingsProps> = ({}) => {
             <ThemeSwitcher />
 
             <WithTooltip
-              display={<div>Download BukWorm chat data as JSON.</div>}
+              display={<div>Download Matrix AI chat data as JSON.</div>}
               trigger={
                 <IconFileDownload
                   className="cursor-pointer hover:opacity-50"
