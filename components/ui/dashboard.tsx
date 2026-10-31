@@ -1,5 +1,7 @@
 "use client"
 
+export const SIDEBAR_WIDTH = 280
+
 import { MatrixSidebar } from "@/components/sidebar/matrix-sidebar"
 import { ChatbotUIContext } from "@/context/context"
 import useHotkey from "@/lib/hooks/use-hotkey"
