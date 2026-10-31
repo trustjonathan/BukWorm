@@ -35,6 +35,11 @@ export const metadata: Metadata = {
   icons: {
     icon: [
       {
+        url: "/favicon-32x32.png",
+        sizes: "32x32",
+        type: "image/png"
+      },
+      {
         url: "/matrix-black.png",
         media: "(prefers-color-scheme: light)"
       },
@@ -44,14 +49,25 @@ export const metadata: Metadata = {
       }
     ],
     shortcut: "/favicon.ico",
-    apple: "/matrix-black.png"
+    apple: [
+      {
+        url: "/apple-touch-icon.png",
+        sizes: "180x180",
+        type: "image/png"
+      }
+    ],
+    other: [
+      {
+        rel: "apple-touch-icon-precomposed",
+        url: "/apple-touch-icon.png"
+      }
+    ]
   },
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
-    statusBarStyle: "black",
+    statusBarStyle: "black-translucent",
     title: APP_DEFAULT_TITLE
-    // startUpImage: [],
   },
   formatDetection: {
     telephone: false
@@ -63,15 +79,24 @@ export const metadata: Metadata = {
       default: APP_DEFAULT_TITLE,
       template: APP_TITLE_TEMPLATE
     },
-    description: APP_DESCRIPTION
+    description: APP_DESCRIPTION,
+    images: [
+      {
+        url: "/og-image.png",
+        width: 1200,
+        height: 630,
+        alt: "Matrix AI"
+      }
+    ]
   },
   twitter: {
-    card: "summary",
+    card: "summary_large_image",
     title: {
       default: APP_DEFAULT_TITLE,
       template: APP_TITLE_TEMPLATE
     },
-    description: APP_DESCRIPTION
+    description: APP_DESCRIPTION,
+    images: ["/og-image.png"]
   }
 }
 
