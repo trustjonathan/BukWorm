@@ -11,13 +11,21 @@ export default function HomePage() {
       <div className="pointer-events-none absolute -bottom-48 -right-36 size-[32rem] rounded-full bg-violet-300/25 blur-3xl dark:bg-violet-500/10" />
 
       <div className="relative flex max-w-2xl flex-col items-center text-center">
-        <div className="mb-6 flex size-24 items-center justify-center rounded-[2rem] border border-cyan-200 bg-white p-3 shadow-2xl shadow-cyan-900/10 dark:border-cyan-300/25 dark:bg-slate-900 dark:shadow-cyan-950/40">
+        <div className="mb-6 flex size-24 items-center justify-center rounded-[2rem] border border-slate-200 bg-white p-3 shadow-2xl shadow-slate-900/10 dark:border-slate-800 dark:bg-slate-900 dark:shadow-slate-950/40">
           <Image
-            src="/matrix.png"
+            src="/matrix-black.png"
             alt="Matrix AI"
             width={72}
             height={72}
-            className="object-contain"
+            className="block object-contain dark:hidden"
+            priority
+          />
+          <Image
+            src="/matrix-white.png"
+            alt="Matrix AI"
+            width={72}
+            height={72}
+            className="hidden object-contain dark:block"
             priority
           />
         </div>

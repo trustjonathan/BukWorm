@@ -138,11 +138,19 @@ export const MatrixSidebar: FC<MatrixSidebarProps> = ({ onClose }) => {
         >
           <div className="flex size-8 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-white p-1 shadow-sm dark:border-slate-700 dark:bg-slate-900">
             <Image
-              src="/matrix.png"
+              src="/matrix-black.png"
               alt="Matrix AI"
               width={24}
               height={24}
-              className="object-contain"
+              className="block object-contain dark:hidden"
+              priority
+            />
+            <Image
+              src="/matrix-white.png"
+              alt="Matrix AI"
+              width={24}
+              height={24}
+              className="hidden object-contain dark:block"
               priority
             />
           </div>

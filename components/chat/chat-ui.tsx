@@ -258,13 +258,21 @@ export const ChatUI: FC<ChatUIProps> = ({}) => {
           <div className="relative flex min-w-0 flex-1 flex-col">
             {chatMessages.length === 0 && (
               <div className="pointer-events-none absolute inset-x-4 top-[24%] z-0 text-center">
-                <div className="mx-auto mb-5 flex size-20 items-center justify-center rounded-[2rem] border border-cyan-200 bg-white p-3 shadow-xl shadow-cyan-900/10 dark:border-cyan-300/20 dark:bg-slate-900 dark:shadow-cyan-950/40">
+                <div className="mx-auto mb-5 flex size-20 items-center justify-center rounded-[2rem] border border-slate-200 bg-white p-3 shadow-xl shadow-slate-900/10 dark:border-slate-800 dark:bg-slate-900 dark:shadow-slate-950/40">
                   <Image
-                    src="/matrix.png"
+                    src="/matrix-black.png"
                     alt="Matrix AI"
                     width={56}
                     height={56}
-                    className="object-contain"
+                    className="block object-contain dark:hidden"
+                    priority
+                  />
+                  <Image
+                    src="/matrix-white.png"
+                    alt="Matrix AI"
+                    width={56}
+                    height={56}
+                    className="hidden object-contain dark:block"
                     priority
                   />
                 </div>

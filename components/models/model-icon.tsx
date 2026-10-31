@@ -78,16 +78,28 @@ export const ModelIcon: FC<ModelIconProps> = ({
       )
     case "google":
       return (
-        <Image
-          className={cn(
-            "rounded-full bg-white object-contain p-0.5",
-            props.className
-          )}
-          src="/matrix.png"
-          alt="Matrix AI"
-          width={width}
-          height={height}
-        />
+        <div className="relative inline-flex items-center justify-center">
+          <Image
+            className={cn(
+              "block rounded-full bg-white object-contain p-0.5 dark:hidden",
+              props.className
+            )}
+            src="/matrix-black.png"
+            alt="Matrix AI"
+            width={width}
+            height={height}
+          />
+          <Image
+            className={cn(
+              "hidden rounded-full bg-slate-900 object-contain p-0.5 dark:block",
+              props.className
+            )}
+            src="/matrix-white.png"
+            alt="Matrix AI"
+            width={width}
+            height={height}
+          />
+        </div>
       )
     case "perplexity":
       return (

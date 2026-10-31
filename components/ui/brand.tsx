@@ -9,13 +9,21 @@ export const Brand = () => {
       className="flex cursor-pointer flex-col items-center transition-opacity hover:opacity-80"
       href="/"
     >
-      <div className="mb-3 flex size-16 items-center justify-center rounded-2xl border border-cyan-200 bg-white p-2.5 shadow-xl shadow-cyan-900/10 dark:border-cyan-400/25 dark:bg-slate-900 dark:shadow-cyan-950/40">
+      <div className="mb-3 flex size-16 items-center justify-center rounded-2xl border border-slate-200 bg-white p-2.5 shadow-xl shadow-slate-900/10 dark:border-slate-800 dark:bg-slate-900 dark:shadow-slate-950/40">
         <Image
-          src="/matrix.png"
+          src="/matrix-black.png"
           alt="Matrix AI"
           width={48}
           height={48}
-          className="object-contain"
+          className="block object-contain dark:hidden"
+          priority
+        />
+        <Image
+          src="/matrix-white.png"
+          alt="Matrix AI"
+          width={48}
+          height={48}
+          className="hidden object-contain dark:block"
           priority
         />
       </div>

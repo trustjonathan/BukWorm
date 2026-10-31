@@ -264,13 +264,22 @@ export const ThreadedMessage: FC<ThreadedMessageProps> = ({
                   className="rounded-full object-cover"
                 />
               ) : (
-                <Image
-                  src="/matrix.png"
-                  alt="Matrix AI"
-                  height={22}
-                  width={22}
-                  className="rounded-full object-contain p-0.5"
-                />
+                <div className="size-[22px] shrink-0">
+                  <Image
+                    src="/matrix-black.png"
+                    alt="Matrix AI"
+                    height={22}
+                    width={22}
+                    className="block size-[22px] rounded-full object-contain p-0.5 dark:hidden"
+                  />
+                  <Image
+                    src="/matrix-white.png"
+                    alt="Matrix AI"
+                    height={22}
+                    width={22}
+                    className="hidden size-[22px] rounded-full object-contain p-0.5 dark:block"
+                  />
+                </div>
               )
             ) : profile?.image_url ? (
               <Image

@@ -33,9 +33,18 @@ export const metadata: Metadata = {
   },
   description: APP_DESCRIPTION,
   icons: {
-    icon: "/matrix.png",
+    icon: [
+      {
+        url: "/matrix-black.png",
+        media: "(prefers-color-scheme: light)"
+      },
+      {
+        url: "/matrix-white.png",
+        media: "(prefers-color-scheme: dark)"
+      }
+    ],
     shortcut: "/favicon.ico",
-    apple: "/matrix.png"
+    apple: "/matrix-black.png"
   },
   manifest: "/manifest.json",
   appleWebApp: {
