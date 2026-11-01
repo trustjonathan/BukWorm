@@ -16,7 +16,6 @@ import { deleteFile } from "@/db/files"
 import { deleteModel } from "@/db/models"
 import { deletePreset } from "@/db/presets"
 import { deletePrompt } from "@/db/prompts"
-import { deleteFileFromStorage } from "@/db/storage/files"
 import { deleteTool } from "@/db/tools"
 import { Tables } from "@/supabase/types"
 import { ContentType, DataItemType } from "@/types"
@@ -57,7 +56,6 @@ export const SidebarDeleteItem: FC<SidebarDeleteItemProps> = ({
       await deletePrompt(prompt.id)
     },
     files: async (file: Tables<"files">) => {
-      await deleteFileFromStorage(file.file_path)
       await deleteFile(file.id)
     },
     collections: async (collection: Tables<"collections">) => {

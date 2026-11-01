@@ -18,8 +18,9 @@ import { DEFAULT_GOOGLE_MODEL_ID } from "@/lib/models/llm/google-llm-list"
 import { supabase } from "@/lib/supabase/browser-client"
 import { LLMID } from "@/types"
 import { useParams, useRouter } from "next/navigation"
-import { ReactNode, useContext, useEffect, useState } from "react"
+import { ReactNode, useCallback, useContext, useEffect, useState } from "react"
 import Loading from "../loading"
+import { toast } from "sonner"
 
 interface WorkspaceLayoutProps {
   children: ReactNode
@@ -59,118 +60,177 @@ export default function WorkspaceLayout({ children }: WorkspaceLayoutProps) {
 
   const [loading, setLoading] = useState(true)
 
-  useEffect(() => {
-    ;(async () => {
-      const session = (await supabase.auth.getSession()).data.session
+  const fetchWorkspaceData = useCallback(
+    async (workspaceId: string, isCurrent: () => boolean) => {
+      setLoading(true)
 
-      if (!session) {
-        return router.push("/login")
-      } else {
-        await fetchWorkspaceData(workspaceId)
+      try {
+        const workspace = await getWorkspaceById(workspaceId)
+        const [
+          assistantData,
+          chats,
+          collectionData,
+          folders,
+          fileData,
+          presetData,
+          promptData,
+          toolData,
+          modelData
+        ] = await Promise.all([
+          getAssistantWorkspacesByWorkspaceId(workspaceId),
+          getChatsByWorkspaceId(workspaceId),
+          getCollectionWorkspacesByWorkspaceId(workspaceId),
+          getFoldersByWorkspaceId(workspaceId),
+          getFileWorkspacesByWorkspaceId(workspaceId),
+          getPresetWorkspacesByWorkspaceId(workspaceId),
+          getPromptWorkspacesByWorkspaceId(workspaceId),
+          getToolWorkspacesByWorkspaceId(workspaceId),
+          getModelWorkspacesByWorkspaceId(workspaceId)
+        ])
+
+        const assistantImages = await Promise.all(
+          assistantData.assistants.map(async assistant => {
+            let url = ""
+
+            if (assistant.image_path) {
+              url =
+                (await getAssistantImageFromStorage(assistant.image_path)) || ""
+            }
+
+            if (!url) {
+              return {
+                assistantId: assistant.id,
+                path: assistant.image_path,
+                base64: "",
+                url
+              }
+            }
+
+            const response = await fetch(url)
+            if (!response.ok) {
+              throw new Error(`Failed to load image for ${assistant.name}.`)
+            }
+            const base64 = await convertBlobToBase64(await response.blob())
+
+            return {
+              assistantId: assistant.id,
+              path: assistant.image_path,
+              base64,
+              url
+            }
+          })
+        )
+
+        if (!isCurrent()) return
+
+        setSelectedWorkspace(workspace)
+        setAssistants(assistantData.assistants)
+        setAssistantImages(assistantImages)
+        setChats(chats)
+        setCollections(collectionData.collections)
+        setFolders(folders)
+        setFiles(fileData.files)
+        setPresets(presetData.presets)
+        setPrompts(promptData.prompts)
+        setTools(toolData.tools)
+        setModels(modelData.models)
+        setChatSettings({
+          model: (workspace.default_model || DEFAULT_GOOGLE_MODEL_ID) as LLMID,
+          prompt:
+            workspace.default_prompt ??
+            "You are a friendly, helpful AI assistant.",
+          temperature: workspace.default_temperature ?? 0.5,
+          contextLength: Math.min(
+            workspace.default_context_length ?? 4096,
+            32768
+          ),
+          includeProfileContext: workspace.include_profile_context ?? true,
+          includeWorkspaceInstructions:
+            workspace.include_workspace_instructions ?? true,
+          embeddingsProvider:
+            workspace.embeddings_provider === "openai" ? "openai" : "local"
+        })
+      } catch (error) {
+        if (isCurrent()) {
+          toast.error(
+            error instanceof Error ? error.message : "Failed to load workspace."
+          )
+        }
+      } finally {
+        if (isCurrent()) setLoading(false)
       }
-    })()
-  }, [])
+    },
+    [
+      setAssistantImages,
+      setAssistants,
+      setChatSettings,
+      setChats,
+      setCollections,
+      setFiles,
+      setFolders,
+      setModels,
+      setPresets,
+      setPrompts,
+      setSelectedWorkspace,
+      setTools
+    ]
+  )
 
   useEffect(() => {
-    ;(async () => await fetchWorkspaceData(workspaceId))()
+    let isCurrent = true
 
     setUserInput("")
     setChatMessages([])
     setSelectedChat(null)
-
     setIsGenerating(false)
     setFirstTokenReceived(false)
-
     setChatFiles([])
     setChatImages([])
     setNewMessageFiles([])
     setNewMessageImages([])
     setShowFilesDisplay(false)
-  }, [workspaceId])
 
-  const fetchWorkspaceData = async (workspaceId: string) => {
-    setLoading(true)
+    const loadWorkspace = async () => {
+      try {
+        const session = (await supabase.auth.getSession()).data.session
 
-    const workspace = await getWorkspaceById(workspaceId)
-    setSelectedWorkspace(workspace)
+        if (!isCurrent) return
+        if (!session) {
+          router.push("/login")
+          return
+        }
 
-    const assistantData = await getAssistantWorkspacesByWorkspaceId(workspaceId)
-    setAssistants(assistantData.assistants)
-
-    for (const assistant of assistantData.assistants) {
-      let url = ""
-
-      if (assistant.image_path) {
-        url = (await getAssistantImageFromStorage(assistant.image_path)) || ""
-      }
-
-      if (url) {
-        const response = await fetch(url)
-        const blob = await response.blob()
-        const base64 = await convertBlobToBase64(blob)
-
-        setAssistantImages(prev => [
-          ...prev,
-          {
-            assistantId: assistant.id,
-            path: assistant.image_path,
-            base64,
-            url
-          }
-        ])
-      } else {
-        setAssistantImages(prev => [
-          ...prev,
-          {
-            assistantId: assistant.id,
-            path: assistant.image_path,
-            base64: "",
-            url
-          }
-        ])
+        await fetchWorkspaceData(workspaceId, () => isCurrent)
+      } catch (error) {
+        if (isCurrent) {
+          toast.error(
+            error instanceof Error ? error.message : "Failed to load session."
+          )
+          setLoading(false)
+        }
       }
     }
 
-    const chats = await getChatsByWorkspaceId(workspaceId)
-    setChats(chats)
+    void loadWorkspace()
 
-    const collectionData =
-      await getCollectionWorkspacesByWorkspaceId(workspaceId)
-    setCollections(collectionData.collections)
-
-    const folders = await getFoldersByWorkspaceId(workspaceId)
-    setFolders(folders)
-
-    const fileData = await getFileWorkspacesByWorkspaceId(workspaceId)
-    setFiles(fileData.files)
-
-    const presetData = await getPresetWorkspacesByWorkspaceId(workspaceId)
-    setPresets(presetData.presets)
-
-    const promptData = await getPromptWorkspacesByWorkspaceId(workspaceId)
-    setPrompts(promptData.prompts)
-
-    const toolData = await getToolWorkspacesByWorkspaceId(workspaceId)
-    setTools(toolData.tools)
-
-    const modelData = await getModelWorkspacesByWorkspaceId(workspaceId)
-    setModels(modelData.models)
-
-    setChatSettings({
-      model: DEFAULT_GOOGLE_MODEL_ID as LLMID,
-      prompt:
-        workspace?.default_prompt ||
-        "You are a friendly, helpful AI assistant.",
-      temperature: workspace?.default_temperature || 0.5,
-      contextLength: Math.min(workspace?.default_context_length || 4096, 32768),
-      includeProfileContext: workspace?.include_profile_context || true,
-      includeWorkspaceInstructions:
-        workspace?.include_workspace_instructions || true,
-      embeddingsProvider: "local"
-    })
-
-    setLoading(false)
-  }
+    return () => {
+      isCurrent = false
+    }
+  }, [
+    fetchWorkspaceData,
+    router,
+    setChatFiles,
+    setChatImages,
+    setChatMessages,
+    setFirstTokenReceived,
+    setIsGenerating,
+    setNewMessageFiles,
+    setNewMessageImages,
+    setSelectedChat,
+    setShowFilesDisplay,
+    setUserInput,
+    workspaceId
+  ])
 
   if (loading) {
     return <Loading />

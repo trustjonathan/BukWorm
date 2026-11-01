@@ -14,12 +14,10 @@ import { CreateTool } from "./items/tools/create-tool"
 
 interface SidebarCreateButtonsProps {
   contentType: ContentType
-  hasData: boolean
 }
 
 export const SidebarCreateButtons: FC<SidebarCreateButtonsProps> = ({
-  contentType,
-  hasData
+  contentType
 }) => {
   const { profile, selectedWorkspace, folders, setFolders } =
     useContext(ChatbotUIContext)
@@ -103,17 +101,15 @@ export const SidebarCreateButtons: FC<SidebarCreateButtonsProps> = ({
         </Button>
       )}
 
-      {hasData && (
-        <Button
-          variant="ghost"
-          size="icon"
-          className="size-9 shrink-0"
-          aria-label={`Create ${contentType} folder`}
-          onClick={handleCreateFolder}
-        >
-          <IconFolderPlus />
-        </Button>
-      )}
+      <Button
+        variant="ghost"
+        size="icon"
+        className="size-9 shrink-0"
+        aria-label={`Create ${contentType} folder`}
+        onClick={handleCreateFolder}
+      >
+        <IconFolderPlus />
+      </Button>
 
       {isCreatingPrompt && (
         <CreatePrompt

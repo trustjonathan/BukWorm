@@ -47,7 +47,15 @@ export const UpdateFolder: FC<UpdateFolderProps> = ({ folder }) => {
   return (
     <Dialog open={showFolderDialog} onOpenChange={setShowFolderDialog}>
       <DialogTrigger asChild>
-        <IconEdit className="hover:opacity-50" size={18} />
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          className="size-9"
+          aria-label={`Rename ${folder.name} folder`}
+        >
+          <IconEdit size={18} />
+        </Button>
       </DialogTrigger>
 
       <DialogContent onKeyDown={handleKeyDown}>

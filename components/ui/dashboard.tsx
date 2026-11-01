@@ -17,16 +17,16 @@ interface DashboardProps {
 export const Dashboard: FC<DashboardProps> = ({ children }) => {
   const { showSidebar, setShowSidebar } = useContext(ChatbotUIContext)
 
-  useHotkey("s", () => {
-    setShowSidebar(prev => {
-      const next = !prev
-      localStorage.setItem("showSidebar", String(next))
-      return next
-    })
-  })
+  const setSidebarVisible = (visible: boolean) => {
+    setShowSidebar(visible)
+    localStorage.setItem("showSidebar", String(visible))
+  }
 
-  const { handleSelectDeviceFile } = useSelectFileHandler()
+  useHotkey("s", () => setSidebarVisible(!showSidebar))
+
+  const { handleSelectDeviceFiles } = useSelectFileHandler()
   const [isDragging, setIsDragging] = useState(false)
+  const dragDepth = useRef(0)
 
   // Mobile swipe gestures
   const touchStartX = useRef<number | null>(null)
@@ -49,7 +49,7 @@ export const Dashboard: FC<DashboardProps> = ({ children }) => {
       deltaX > 45 &&
       Math.abs(deltaX) > Math.abs(deltaY)
     ) {
-      setShowSidebar(true)
+      setSidebarVisible(true)
     }
     // Close on swipe left when sidebar is open on mobile
     else if (
@@ -57,7 +57,7 @@ export const Dashboard: FC<DashboardProps> = ({ children }) => {
       deltaX < -50 &&
       Math.abs(deltaX) > Math.abs(deltaY)
     ) {
-      setShowSidebar(false)
+      setSidebarVisible(false)
     }
 
     touchStartX.current = null
@@ -68,19 +68,22 @@ export const Dashboard: FC<DashboardProps> = ({ children }) => {
     event.preventDefault()
     const files = event.dataTransfer.files
     if (files.length > 0) {
-      handleSelectDeviceFile(files[0])
+      void handleSelectDeviceFiles(files)
     }
+    dragDepth.current = 0
     setIsDragging(false)
   }
 
   const handleDragEnter = (event: React.DragEvent<HTMLDivElement>) => {
     event.preventDefault()
+    dragDepth.current += 1
     setIsDragging(true)
   }
 
   const handleDragLeave = (event: React.DragEvent<HTMLDivElement>) => {
     event.preventDefault()
-    setIsDragging(false)
+    dragDepth.current = Math.max(0, dragDepth.current - 1)
+    if (dragDepth.current === 0) setIsDragging(false)
   }
 
   const onDragOver = (event: React.DragEvent<HTMLDivElement>) => {
@@ -95,39 +98,23 @@ export const Dashboard: FC<DashboardProps> = ({ children }) => {
     >
       <CommandK />
 
-      {/* ── Desktop Single Unified Sidebar ──────────────────────────────── */}
-      <div
-        className={cn(
-          "hidden h-full shrink-0 transition-all duration-300 ease-in-out lg:block",
-          showSidebar ? "w-[280px]" : "w-0 overflow-hidden"
-        )}
-      >
-        <MatrixSidebar />
-      </div>
-
-      {/* ── Mobile Off-canvas Drawer Sidebar (Reveals on swipe/scroll right) ── */}
-      <div
-        className={cn(
-          "fixed inset-0 z-50 transition-opacity duration-300 lg:hidden",
-          showSidebar
-            ? "pointer-events-auto opacity-100"
-            : "pointer-events-none opacity-0"
-        )}
-      >
-        {/* Backdrop */}
-        <div
-          className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm"
-          onClick={() => setShowSidebar(false)}
+      {showSidebar && (
+        <button
+          type="button"
+          aria-label="Close sidebar"
+          className="fixed inset-0 z-40 bg-slate-900/60 backdrop-blur-sm lg:hidden"
+          onClick={() => setSidebarVisible(false)}
         />
-        {/* Drawer panel */}
-        <div
-          className={cn(
-            "relative h-full w-[285px] max-w-[85vw] shadow-2xl transition-transform duration-300 ease-in-out",
-            showSidebar ? "translate-x-0" : "-translate-x-full"
-          )}
-        >
-          <MatrixSidebar onClose={() => setShowSidebar(false)} />
-        </div>
+      )}
+      <div
+        className={cn(
+          "h-full shrink-0 overflow-hidden transition-[width,transform] duration-300 ease-in-out",
+          showSidebar
+            ? "fixed inset-y-0 left-0 z-50 w-[285px] max-w-[85vw] shadow-2xl lg:relative lg:z-auto lg:w-[280px] lg:max-w-none lg:shadow-none"
+            : "hidden lg:block lg:w-0"
+        )}
+      >
+        <MatrixSidebar onClose={() => setSidebarVisible(false)} />
       </div>
 
       {/* ── Main Workspace Content Area ─────────────────────────────────── */}
@@ -140,7 +127,7 @@ export const Dashboard: FC<DashboardProps> = ({ children }) => {
       >
         {isDragging ? (
           <div className="flex h-full items-center justify-center bg-black/60 text-xl font-medium text-white backdrop-blur-sm">
-            Drop file to attach
+            Drop files to attach
           </div>
         ) : (
           children

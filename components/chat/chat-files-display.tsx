@@ -1,3 +1,4 @@
+import { useSelectFileHandler } from "@/components/chat/chat-hooks/use-select-file-handler"
 import { ChatbotUIContext } from "@/context/context"
 import { getFileFromStorage } from "@/db/storage/files"
 import useHotkey from "@/lib/hooks/use-hotkey"
@@ -42,6 +43,7 @@ export const ChatFilesDisplay: FC<ChatFilesDisplayProps> = ({}) => {
     setChatFiles,
     setUseRetrieval
   } = useContext(ChatbotUIContext)
+  const { retryFileUpload } = useSelectFileHandler()
 
   const [selectedFile, setSelectedFile] = useState<ChatFile | null>(null)
   const [selectedImage, setSelectedImage] = useState<MessageImage | null>(null)
@@ -118,30 +120,31 @@ export const ChatFilesDisplay: FC<ChatFilesDisplayProps> = ({}) => {
           <div className="flex gap-2 overflow-auto pt-2">
             {messageImages.map((image, index) => (
               <div
-                key={index}
-                className="relative flex h-[64px] cursor-pointer items-center space-x-4 rounded-xl hover:opacity-50"
+                key={image.messageId}
+                className="relative flex h-[64px] items-center space-x-4 rounded-xl"
               >
-                <Image
-                  className="rounded"
-                  // Force the image to be 56px by 56px
-                  style={{
-                    minWidth: "56px",
-                    minHeight: "56px",
-                    maxHeight: "56px",
-                    maxWidth: "56px"
-                  }}
-                  src={image.base64} // Preview images will always be base64
-                  alt="File image"
-                  width={56}
-                  height={56}
+                <button
+                  type="button"
+                  aria-label={`Preview ${image.file?.name || "image attachment"}`}
+                  className="focus-visible:ring-ring flex size-14 items-center justify-center rounded-md focus-visible:outline-none focus-visible:ring-2"
                   onClick={() => {
                     setSelectedImage(image)
                     setShowPreview(true)
                   }}
-                />
+                >
+                  <Image
+                    className="rounded"
+                    src={image.base64}
+                    alt=""
+                    width={56}
+                    height={56}
+                  />
+                </button>
 
-                <IconX
-                  className="bg-muted-foreground border-primary absolute right-[-6px] top-[-2px] flex size-5 cursor-pointer items-center justify-center rounded-full border-DEFAULT text-xs hover:border-red-500 hover:bg-white hover:text-red-500"
+                <button
+                  type="button"
+                  aria-label={`Remove ${image.file?.name || "image attachment"}`}
+                  className="bg-background text-foreground hover:bg-destructive hover:text-destructive-foreground focus-visible:ring-ring absolute right-[-6px] top-[-2px] flex size-7 items-center justify-center rounded-full border shadow-sm focus-visible:outline-none focus-visible:ring-2"
                   onClick={e => {
                     e.stopPropagation()
                     setNewMessageImages(
@@ -153,62 +156,116 @@ export const ChatFilesDisplay: FC<ChatFilesDisplayProps> = ({}) => {
                       chatImages.filter(f => f.messageId !== image.messageId)
                     )
                   }}
-                />
+                >
+                  <IconX size={14} />
+                </button>
               </div>
             ))}
 
             {combinedChatFiles.map((file, index) =>
-              file.id === "loading" ? (
+              file.id.startsWith("pending:") ? (
                 <div
-                  key={index}
-                  className="relative flex h-[64px] items-center space-x-4 rounded-xl border-2 px-4 py-3"
+                  key={file.id}
+                  className="relative flex h-[64px] min-w-[220px] items-center gap-3 rounded-xl border px-3 py-2"
                 >
-                  <div className="rounded bg-blue-500 p-2">
-                    <IconLoader2 className="animate-spin" />
+                  <div className="text-muted-foreground bg-muted shrink-0 rounded-md p-2">
+                    {file.uploadState === "failed" ? (
+                      <IconFileFilled size={18} />
+                    ) : (
+                      <IconLoader2 className="animate-spin" size={18} />
+                    )}
                   </div>
 
-                  <div className="truncate text-sm">
-                    <div className="truncate">{file.name}</div>
-                    <div className="truncate opacity-50">{file.type}</div>
+                  <div className="min-w-0 flex-1 text-sm">
+                    <div className="truncate" title={file.name}>
+                      {file.name}
+                    </div>
+                    <div
+                      className={cn(
+                        "truncate text-xs",
+                        file.uploadState === "failed"
+                          ? "text-destructive"
+                          : "text-muted-foreground"
+                      )}
+                      title={file.uploadError || file.type}
+                    >
+                      {file.uploadError ||
+                        (file.uploadState === "failed"
+                          ? "Upload failed"
+                          : "Uploading…")}
+                    </div>
                   </div>
+                  {file.uploadState === "failed" && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="h-8 shrink-0"
+                      onClick={() => void retryFileUpload(file)}
+                    >
+                      Retry
+                    </Button>
+                  )}
+                  {file.uploadState === "failed" && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="size-8 shrink-0"
+                      aria-label={`Remove ${file.name}`}
+                      onClick={() =>
+                        setNewMessageFiles(prev =>
+                          prev.filter(item => item.id !== file.id)
+                        )
+                      }
+                    >
+                      <IconX size={14} />
+                    </Button>
+                  )}
                 </div>
               ) : (
                 <div
                   key={file.id}
-                  className="relative flex h-[64px] cursor-pointer items-center space-x-4 rounded-xl border-2 px-4 py-3 hover:opacity-50"
-                  onClick={() => getLinkAndView(file)}
+                  className="relative flex h-[64px] min-w-[220px] items-center gap-3 rounded-xl border px-3 py-2"
                 >
-                  <div className="rounded bg-blue-500 p-2">
-                    {(() => {
-                      let fileExtension = file.type.includes("/")
-                        ? file.type.split("/")[1]
-                        : file.type
+                  <button
+                    type="button"
+                    aria-label={`Open ${file.name}`}
+                    className="focus-visible:ring-ring flex min-w-0 flex-1 items-center gap-3 rounded-md text-left focus-visible:outline-none focus-visible:ring-2"
+                    onClick={() => void getLinkAndView(file)}
+                  >
+                    <div className="bg-muted text-muted-foreground shrink-0 rounded-md p-2">
+                      {(() => {
+                        const fileExtension = file.type.includes("/")
+                          ? file.type.split("/")[1]
+                          : file.type
 
-                      switch (fileExtension) {
-                        case "pdf":
-                          return <IconFileTypePdf />
-                        case "markdown":
-                          return <IconMarkdown />
-                        case "txt":
-                          return <IconFileTypeTxt />
-                        case "json":
-                          return <IconJson />
-                        case "csv":
-                          return <IconFileTypeCsv />
-                        case "docx":
-                          return <IconFileTypeDocx />
-                        default:
-                          return <IconFileFilled />
-                      }
-                    })()}
-                  </div>
+                        switch (fileExtension) {
+                          case "pdf":
+                            return <IconFileTypePdf />
+                          case "markdown":
+                            return <IconMarkdown />
+                          case "txt":
+                            return <IconFileTypeTxt />
+                          case "json":
+                            return <IconJson />
+                          case "csv":
+                            return <IconFileTypeCsv />
+                          case "docx":
+                            return <IconFileTypeDocx />
+                          default:
+                            return <IconFileFilled />
+                        }
+                      })()}
+                    </div>
 
-                  <div className="truncate text-sm">
-                    <div className="truncate">{file.name}</div>
-                  </div>
+                    <div className="truncate text-sm">{file.name}</div>
+                  </button>
 
-                  <IconX
-                    className="bg-muted-foreground border-primary absolute right-[-6px] top-[-6px] flex size-5 cursor-pointer items-center justify-center rounded-full border-DEFAULT text-xs hover:border-red-500 hover:bg-white hover:text-red-500"
+                  <button
+                    type="button"
+                    aria-label={`Remove ${file.name}`}
+                    className="bg-background text-foreground hover:bg-destructive hover:text-destructive-foreground focus-visible:ring-ring absolute right-[-6px] top-[-6px] flex size-7 items-center justify-center rounded-full border shadow-sm focus-visible:outline-none focus-visible:ring-2"
                     onClick={e => {
                       e.stopPropagation()
                       setNewMessageFiles(
@@ -216,7 +273,9 @@ export const ChatFilesDisplay: FC<ChatFilesDisplayProps> = ({}) => {
                       )
                       setChatFiles(chatFiles.filter(f => f.id !== file.id))
                     }}
-                  />
+                  >
+                    <IconX size={14} />
+                  </button>
                 </div>
               )
             )}

@@ -9,8 +9,7 @@ import {
   DialogTrigger
 } from "@/components/ui/dialog"
 import { ChatbotUIContext } from "@/context/context"
-import { deleteFolder } from "@/db/folders"
-import { supabase } from "@/lib/supabase/browser-client"
+import { deleteFolder, deleteFolderAndItems } from "@/db/folders"
 import { Tables } from "@/supabase/types"
 import { ContentType } from "@/types"
 import { IconTrash } from "@tabler/icons-react"
@@ -41,6 +40,7 @@ export const DeleteFolder: FC<DeleteFolderProps> = ({
   const buttonRef = useRef<HTMLButtonElement>(null)
 
   const [showFolderDialog, setShowFolderDialog] = useState(false)
+  const [isDeleting, setIsDeleting] = useState(false)
 
   const stateUpdateFunctions = {
     chats: setChats,
@@ -54,28 +54,33 @@ export const DeleteFolder: FC<DeleteFolderProps> = ({
   }
 
   const handleDeleteFolderOnly = async () => {
-    await deleteFolder(folder.id)
-
-    setFolders(prevState => prevState.filter(c => c.id !== folder.id))
-
-    setShowFolderDialog(false)
-
     const setStateFunction = stateUpdateFunctions[contentType]
 
     if (!setStateFunction) return
 
-    setStateFunction((prevItems: any) =>
-      prevItems.map((item: any) => {
-        if (item.folder_id === folder.id) {
-          return {
-            ...item,
-            folder_id: null
-          }
-        }
+    setIsDeleting(true)
+    try {
+      await deleteFolder(folder.id)
 
-        return item
-      })
-    )
+      setFolders(prevState => prevState.filter(c => c.id !== folder.id))
+      setStateFunction((prevItems: any) =>
+        prevItems.map((item: any) =>
+          item.folder_id === folder.id
+            ? {
+                ...item,
+                folder_id: null
+              }
+            : item
+        )
+      )
+      setShowFolderDialog(false)
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Failed to delete folder."
+      )
+    } finally {
+      setIsDeleting(false)
+    }
   }
 
   const handleDeleteFolderAndItems = async () => {
@@ -83,29 +88,41 @@ export const DeleteFolder: FC<DeleteFolderProps> = ({
 
     if (!setStateFunction) return
 
-    const { error } = await supabase
-      .from(contentType)
-      .delete()
-      .eq("folder_id", folder.id)
+    setIsDeleting(true)
+    try {
+      await deleteFolderAndItems(folder.id, contentType)
 
-    if (error) {
-      toast.error(error.message)
+      setStateFunction((prevItems: any) =>
+        prevItems.filter((item: any) => item.folder_id !== folder.id)
+      )
+      setFolders(prevState => prevState.filter(c => c.id !== folder.id))
+      setShowFolderDialog(false)
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Failed to delete folder and its items."
+      )
+    } finally {
+      setIsDeleting(false)
     }
-
-    setStateFunction((prevItems: any) =>
-      prevItems.filter((item: any) => item.folder_id !== folder.id)
-    )
-
-    handleDeleteFolderOnly()
   }
 
   return (
     <Dialog open={showFolderDialog} onOpenChange={setShowFolderDialog}>
       <DialogTrigger asChild>
-        <IconTrash className="hover:opacity-50" size={18} />
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          className="size-9"
+          aria-label={`Delete ${folder.name} folder`}
+        >
+          <IconTrash size={18} />
+        </Button>
       </DialogTrigger>
 
-      <DialogContent className="min-w-[550px]">
+      <DialogContent className="w-[calc(100vw-2rem)] max-w-lg">
         <DialogHeader>
           <DialogTitle>Delete {folder.name}</DialogTitle>
 
@@ -115,13 +132,18 @@ export const DeleteFolder: FC<DeleteFolderProps> = ({
         </DialogHeader>
 
         <DialogFooter>
-          <Button variant="ghost" onClick={() => setShowFolderDialog(false)}>
+          <Button
+            variant="ghost"
+            disabled={isDeleting}
+            onClick={() => setShowFolderDialog(false)}
+          >
             Cancel
           </Button>
 
           <Button
             ref={buttonRef}
             variant="destructive"
+            disabled={isDeleting}
             onClick={handleDeleteFolderAndItems}
           >
             Delete Folder & Included Items
@@ -130,6 +152,7 @@ export const DeleteFolder: FC<DeleteFolderProps> = ({
           <Button
             ref={buttonRef}
             variant="destructive"
+            disabled={isDeleting}
             onClick={handleDeleteFolderOnly}
           >
             Delete Folder Only

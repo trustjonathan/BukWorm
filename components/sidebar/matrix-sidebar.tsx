@@ -5,6 +5,7 @@ import { ProfileSettings } from "@/components/utility/profile-settings"
 import { WorkspaceSwitcher } from "@/components/utility/workspace-switcher"
 import { WorkspaceSettings } from "@/components/workspace/workspace-settings"
 import { ChatbotUIContext } from "@/context/context"
+import { searchMessageChatIdsByWorkspace } from "@/db/messages"
 import { cn } from "@/lib/utils"
 import { ContentType } from "@/types"
 import {
@@ -23,11 +24,12 @@ import {
 } from "@tabler/icons-react"
 import Image from "next/image"
 import { useRouter } from "next/navigation"
-import { FC, useContext, useState } from "react"
+import { FC, useContext, useEffect, useState } from "react"
 import { Button } from "../ui/button"
 import { SidebarCreateButtons } from "./sidebar-create-buttons"
 import { SidebarDataList } from "./sidebar-data-list"
 import { SidebarSearch } from "./sidebar-search"
+import { toast } from "sonner"
 
 // ─── Section definitions ────────────────────────────────────────────────────
 
@@ -79,6 +81,49 @@ export const MatrixSidebar: FC<MatrixSidebarProps> = ({ onClose }) => {
 
   // Per-section search terms (preserved while sidebar is mounted)
   const [searchTerms, setSearchTerms] = useState<Record<string, string>>({})
+  const [messageMatchIds, setMessageMatchIds] = useState<string[]>([])
+  const [isSearchingMessages, setIsSearchingMessages] = useState(false)
+  const selectedWorkspaceId = selectedWorkspace?.id
+
+  useEffect(() => {
+    const searchTerm = searchTerms.chats?.trim()
+
+    if (!searchTerm || !selectedWorkspaceId) {
+      setMessageMatchIds([])
+      setIsSearchingMessages(false)
+      return
+    }
+
+    let cancelled = false
+    const timeoutId = window.setTimeout(async () => {
+      setIsSearchingMessages(true)
+
+      try {
+        const chatIds = await searchMessageChatIdsByWorkspace(
+          selectedWorkspaceId,
+          searchTerm
+        )
+
+        if (!cancelled) setMessageMatchIds(chatIds)
+      } catch (error) {
+        if (!cancelled) {
+          setMessageMatchIds([])
+          toast.error(
+            error instanceof Error
+              ? error.message
+              : "Could not search chat messages."
+          )
+        }
+      } finally {
+        if (!cancelled) setIsSearchingMessages(false)
+      }
+    }, 250)
+
+    return () => {
+      cancelled = true
+      window.clearTimeout(timeoutId)
+    }
+  }, [searchTerms.chats, selectedWorkspaceId])
 
   // ── Data & folder lookup maps ─────────────────────────────────────────────
   const dataMap: Record<ContentType, any[]> = {
@@ -109,9 +154,26 @@ export const MatrixSidebar: FC<MatrixSidebarProps> = ({ onClose }) => {
     setOpenSection(prev => (prev === type ? null : type))
   }
 
+  const closeOnMobileNavigation = () => {
+    if (window.innerWidth >= 1024) return
+
+    if (onClose) {
+      onClose()
+    } else {
+      setShowSidebar(false)
+      localStorage.setItem("showSidebar", "false")
+    }
+  }
+
   const handleCreateNewChat = () => {
     handleNewChat()
-    if (window.innerWidth < 1024) setShowSidebar(false)
+    closeOnMobileNavigation()
+  }
+
+  const handleNavigateHome = () => {
+    if (!selectedWorkspace) return
+    router.push(`/${selectedWorkspace.id}/chat`)
+    closeOnMobileNavigation()
   }
 
   const updateSearchTerm = (type: ContentType, term: string) => {
@@ -122,6 +184,14 @@ export const MatrixSidebar: FC<MatrixSidebarProps> = ({ onClose }) => {
     const term = (searchTerms[type] || "").toLowerCase()
     const data = dataMap[type]
     if (!term) return data
+    if (type === "chats") {
+      const messageMatchIdsSet = new Set(messageMatchIds)
+      return data.filter(
+        (item: any) =>
+          item.name.toLowerCase().includes(term) ||
+          messageMatchIdsSet.has(item.id)
+      )
+    }
     return data.filter((item: any) => item.name.toLowerCase().includes(term))
   }
 
@@ -135,9 +205,7 @@ export const MatrixSidebar: FC<MatrixSidebarProps> = ({ onClose }) => {
           type="button"
           aria-label="Go to workspace home"
           className="focus-visible:ring-ring flex items-center gap-2.5 rounded-md text-left transition-opacity hover:opacity-85 focus-visible:outline-none focus-visible:ring-2"
-          onClick={() => {
-            if (selectedWorkspace) router.push(`/${selectedWorkspace.id}/chat`)
-          }}
+          onClick={handleNavigateHome}
         >
           <div className="flex size-8 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-white p-1 shadow-sm dark:border-slate-700 dark:bg-slate-900">
             <Image
@@ -164,9 +232,12 @@ export const MatrixSidebar: FC<MatrixSidebarProps> = ({ onClose }) => {
 
         <button
           onClick={() => {
-            setShowSidebar(false)
-            localStorage.setItem("showSidebar", "false")
-            if (onClose) onClose()
+            if (onClose) {
+              onClose()
+            } else {
+              setShowSidebar(false)
+              localStorage.setItem("showSidebar", "false")
+            }
           }}
           aria-label="Collapse sidebar"
           className="text-muted-foreground hover:bg-accent hover:text-accent-foreground focus-visible:ring-ring flex size-9 items-center justify-center rounded-md transition-colors focus-visible:outline-none focus-visible:ring-2"
@@ -178,7 +249,7 @@ export const MatrixSidebar: FC<MatrixSidebarProps> = ({ onClose }) => {
       {/* ── Workspace Switcher + Settings ────────────────────────────────── */}
       <div className="border-border flex shrink-0 items-center gap-1.5 border-b px-3 py-2">
         <div className="min-w-0 flex-1">
-          <WorkspaceSwitcher />
+          <WorkspaceSwitcher onNavigate={closeOnMobileNavigation} />
         </div>
         <WorkspaceSettings />
       </div>
@@ -239,10 +310,7 @@ export const MatrixSidebar: FC<MatrixSidebarProps> = ({ onClose }) => {
                 <div className="flex min-h-0 flex-1 flex-col px-2 pb-2">
                   {/* Create Buttons: "New [Type]" + "New Folder" */}
                   <div className="mt-1 flex items-center">
-                    <SidebarCreateButtons
-                      contentType={section.type}
-                      hasData={count > 0}
-                    />
+                    <SidebarCreateButtons contentType={section.type} />
                   </div>
 
                   {/* Search */}
@@ -260,7 +328,13 @@ export const MatrixSidebar: FC<MatrixSidebarProps> = ({ onClose }) => {
                   <SidebarDataList
                     contentType={section.type}
                     data={getFilteredData(section.type)}
+                    allData={data}
                     folders={sectionFolders}
+                    onNavigate={closeOnMobileNavigation}
+                    searchTerm={searchTerms[section.type] || ""}
+                    isSearching={
+                      section.type === "chats" && isSearchingMessages
+                    }
                   />
                 </div>
               )}

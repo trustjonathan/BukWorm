@@ -62,7 +62,9 @@ export const handleRetrieval = async (
     method: "POST",
     body: JSON.stringify({
       userInput,
-      fileIds: [...newMessageFiles, ...chatFiles].map(file => file.id),
+      fileIds: Array.from(
+        new Set([...newMessageFiles, ...chatFiles].map(file => file.id))
+      ),
       embeddingsProvider,
       sourceCount
     })

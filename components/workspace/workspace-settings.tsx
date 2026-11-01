@@ -1,12 +1,15 @@
 import { ChatbotUIContext } from "@/context/context"
 import { WORKSPACE_INSTRUCTIONS_MAX } from "@/db/limits"
 import {
+  deleteWorkspaceImage,
   getWorkspaceImageFromStorage,
   uploadWorkspaceImage
 } from "@/db/storage/workspace-images"
 import { updateWorkspace } from "@/db/workspaces"
 import { convertBlobToBase64 } from "@/lib/blob-to-b64"
-import { LLMID } from "@/types"
+import { ChatSettings, LLMID } from "@/types"
+import { Tables } from "@/supabase/types"
+import { DEFAULT_GOOGLE_MODEL_ID } from "@/lib/models/llm/google-llm-list"
 import { IconHome, IconSettings } from "@tabler/icons-react"
 import { FC, useContext, useEffect, useRef, useState } from "react"
 import { toast } from "sonner"
@@ -25,12 +28,17 @@ import {
 } from "../ui/sheet"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../ui/tabs"
 import { TextareaAutosize } from "../ui/textarea-autosize"
-import { WithTooltip } from "../ui/with-tooltip"
 import { DeleteWorkspace } from "./delete-workspace"
 
-interface WorkspaceSettingsProps {}
+interface WorkspaceSettingsProps {
+  embedded?: boolean
+  onClose?: () => void
+}
 
-export const WorkspaceSettings: FC<WorkspaceSettingsProps> = ({}) => {
+export const WorkspaceSettings: FC<WorkspaceSettingsProps> = ({
+  embedded = false,
+  onClose
+}) => {
   const {
     profile,
     selectedWorkspace,
@@ -55,16 +63,42 @@ export const WorkspaceSettings: FC<WorkspaceSettingsProps> = ({}) => {
     selectedWorkspace?.instructions || ""
   )
 
-  const [defaultChatSettings, setDefaultChatSettings] = useState({
-    model: selectedWorkspace?.default_model,
-    prompt: selectedWorkspace?.default_prompt,
-    temperature: selectedWorkspace?.default_temperature,
-    contextLength: selectedWorkspace?.default_context_length,
-    includeProfileContext: selectedWorkspace?.include_profile_context,
+  const [defaultChatSettings, setDefaultChatSettings] = useState<ChatSettings>({
+    model: (selectedWorkspace?.default_model ||
+      DEFAULT_GOOGLE_MODEL_ID) as LLMID,
+    prompt:
+      selectedWorkspace?.default_prompt ??
+      "You are a friendly, helpful AI assistant.",
+    temperature: selectedWorkspace?.default_temperature ?? 0.5,
+    contextLength: selectedWorkspace?.default_context_length ?? 4096,
+    includeProfileContext: selectedWorkspace?.include_profile_context ?? true,
     includeWorkspaceInstructions:
-      selectedWorkspace?.include_workspace_instructions,
-    embeddingsProvider: selectedWorkspace?.embeddings_provider
+      selectedWorkspace?.include_workspace_instructions ?? true,
+    embeddingsProvider:
+      selectedWorkspace?.embeddings_provider === "openai" ? "openai" : "local"
   })
+
+  useEffect(() => {
+    setName(selectedWorkspace?.name || "")
+    setDescription(selectedWorkspace?.description || "")
+    setInstructions(selectedWorkspace?.instructions || "")
+    setSelectedImage(null)
+
+    setDefaultChatSettings({
+      model: (selectedWorkspace?.default_model ||
+        DEFAULT_GOOGLE_MODEL_ID) as LLMID,
+      prompt:
+        selectedWorkspace?.default_prompt ??
+        "You are a friendly, helpful AI assistant.",
+      temperature: selectedWorkspace?.default_temperature ?? 0.5,
+      contextLength: selectedWorkspace?.default_context_length ?? 4096,
+      includeProfileContext: selectedWorkspace?.include_profile_context ?? true,
+      includeWorkspaceInstructions:
+        selectedWorkspace?.include_workspace_instructions ?? true,
+      embeddingsProvider:
+        selectedWorkspace?.embeddings_provider === "openai" ? "openai" : "local"
+    })
+  }, [selectedWorkspace])
 
   useEffect(() => {
     const workspaceImage =
@@ -73,87 +107,109 @@ export const WorkspaceSettings: FC<WorkspaceSettingsProps> = ({}) => {
       )?.base64 || ""
 
     setImageLink(workspaceImage)
-  }, [workspaceImages])
+  }, [workspaceImages, selectedWorkspace?.id, selectedWorkspace?.image_path])
 
   const handleSave = async () => {
     if (!selectedWorkspace) return
 
-    let imagePath = ""
+    try {
+      const previousImagePath = selectedWorkspace.image_path
+      const imagePath = selectedImage
+        ? await uploadWorkspaceImage(selectedWorkspace, selectedImage)
+        : previousImagePath
 
-    if (selectedImage) {
-      imagePath = await uploadWorkspaceImage(selectedWorkspace, selectedImage)
-
-      const url = (await getWorkspaceImageFromStorage(imagePath)) || ""
-
-      if (url) {
-        const response = await fetch(url)
-        const blob = await response.blob()
-        const base64 = await convertBlobToBase64(blob)
-
-        setWorkspaceImages(prev => [
-          ...prev,
-          {
-            workspaceId: selectedWorkspace.id,
-            path: imagePath,
-            base64,
-            url
-          }
-        ])
-      }
-    }
-
-    const updatedWorkspace = await updateWorkspace(selectedWorkspace.id, {
-      ...selectedWorkspace,
-      name,
-      description,
-      image_path: imagePath,
-      instructions,
-      default_model: defaultChatSettings.model,
-      default_prompt: defaultChatSettings.prompt,
-      default_temperature: defaultChatSettings.temperature,
-      default_context_length: defaultChatSettings.contextLength,
-      embeddings_provider: defaultChatSettings.embeddingsProvider,
-      include_profile_context: defaultChatSettings.includeProfileContext,
-      include_workspace_instructions:
-        defaultChatSettings.includeWorkspaceInstructions
-    })
-
-    if (
-      defaultChatSettings.model &&
-      defaultChatSettings.prompt &&
-      defaultChatSettings.temperature &&
-      defaultChatSettings.contextLength &&
-      defaultChatSettings.includeProfileContext &&
-      defaultChatSettings.includeWorkspaceInstructions &&
-      defaultChatSettings.embeddingsProvider
-    ) {
-      setChatSettings({
-        model: defaultChatSettings.model as LLMID,
-        prompt: defaultChatSettings.prompt,
-        temperature: defaultChatSettings.temperature,
-        contextLength: defaultChatSettings.contextLength,
-        includeProfileContext: defaultChatSettings.includeProfileContext,
-        includeWorkspaceInstructions:
-          defaultChatSettings.includeWorkspaceInstructions,
-        embeddingsProvider: defaultChatSettings.embeddingsProvider as
-          | "openai"
-          | "local"
-      })
-    }
-
-    setIsOpen(false)
-    setSelectedWorkspace(updatedWorkspace)
-    setWorkspaces(workspaces => {
-      return workspaces.map(workspace => {
-        if (workspace.id === selectedWorkspace.id) {
-          return updatedWorkspace
+      let updatedWorkspace: Tables<"workspaces">
+      try {
+        updatedWorkspace = await updateWorkspace(selectedWorkspace.id, {
+          ...selectedWorkspace,
+          name,
+          description,
+          image_path: imagePath,
+          instructions,
+          default_model: defaultChatSettings.model,
+          default_prompt: defaultChatSettings.prompt,
+          default_temperature: defaultChatSettings.temperature,
+          default_context_length: defaultChatSettings.contextLength,
+          embeddings_provider: defaultChatSettings.embeddingsProvider,
+          include_profile_context: defaultChatSettings.includeProfileContext,
+          include_workspace_instructions:
+            defaultChatSettings.includeWorkspaceInstructions
+        })
+      } catch (error) {
+        if (selectedImage && imagePath !== previousImagePath) {
+          await deleteWorkspaceImage(imagePath).catch(cleanupError => {
+            console.error(
+              "Could not clean up an unused workspace image.",
+              cleanupError
+            )
+          })
         }
 
-        return workspace
-      })
-    })
+        throw error
+      }
 
-    toast.success("Workspace updated!")
+      setChatSettings(defaultChatSettings)
+
+      if (!embedded) setIsOpen(false)
+      setSelectedWorkspace(updatedWorkspace)
+      setWorkspaces(workspaces => {
+        return workspaces.map(workspace => {
+          if (workspace.id === selectedWorkspace.id) {
+            return updatedWorkspace
+          }
+
+          return workspace
+        })
+      })
+
+      toast.success("Workspace updated!")
+
+      if (selectedImage) {
+        try {
+          const url = await getWorkspaceImageFromStorage(imagePath)
+
+          if (url) {
+            const response = await fetch(url)
+            const blob = await response.blob()
+            const base64 = await convertBlobToBase64(blob)
+
+            setWorkspaceImages(prev => [
+              ...prev.filter(
+                image => image.workspaceId !== selectedWorkspace.id
+              ),
+              {
+                workspaceId: selectedWorkspace.id,
+                path: imagePath,
+                base64,
+                url
+              }
+            ])
+          }
+        } catch (error) {
+          toast.error(
+            error instanceof Error
+              ? `Workspace saved, but its image preview could not refresh: ${error.message}`
+              : "Workspace saved, but its image preview could not refresh."
+          )
+        }
+
+        if (previousImagePath && previousImagePath !== imagePath) {
+          try {
+            await deleteWorkspaceImage(previousImagePath)
+          } catch (error) {
+            toast.error(
+              error instanceof Error
+                ? `Workspace saved, but image cleanup failed: ${error.message}`
+                : "Workspace saved, but the previous image could not be removed."
+            )
+          }
+        }
+      }
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Could not save workspace."
+      )
+    }
   }
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
@@ -164,19 +220,134 @@ export const WorkspaceSettings: FC<WorkspaceSettingsProps> = ({}) => {
 
   if (!selectedWorkspace || !profile) return null
 
+  const settingsContent = (
+    <>
+      <div className="grow overflow-auto">
+        <SheetHeader>
+          <SheetTitle className="flex items-center justify-between">
+            Workspace Settings
+            {selectedWorkspace?.is_home && <IconHome />}
+          </SheetTitle>
+
+          {selectedWorkspace?.is_home && (
+            <div className="text-sm font-light">
+              This is your home workspace for personal use.
+            </div>
+          )}
+        </SheetHeader>
+
+        <Tabs defaultValue="main">
+          <TabsList className="mt-4 grid w-full grid-cols-2">
+            <TabsTrigger value="main">Main</TabsTrigger>
+            <TabsTrigger value="defaults">Defaults</TabsTrigger>
+          </TabsList>
+
+          <TabsContent className="mt-4 space-y-4" value="main">
+            <>
+              <div className="space-y-1">
+                <Label>Workspace Name</Label>
+
+                <Input
+                  placeholder="Name..."
+                  value={name}
+                  onChange={e => setName(e.target.value)}
+                />
+              </div>
+
+              <div className="space-y-1">
+                <Label>Workspace Image</Label>
+
+                <ImagePicker
+                  src={imageLink}
+                  image={selectedImage}
+                  onSrcChange={setImageLink}
+                  onImageChange={setSelectedImage}
+                  width={50}
+                  height={50}
+                />
+              </div>
+            </>
+
+            <div className="space-y-1">
+              <Label>
+                How would you like the AI to respond in this workspace?
+              </Label>
+
+              <TextareaAutosize
+                placeholder="Instructions... (optional)"
+                value={instructions}
+                onValueChange={setInstructions}
+                minRows={5}
+                maxRows={10}
+                maxLength={1500}
+              />
+
+              <LimitDisplay
+                used={instructions.length}
+                limit={WORKSPACE_INSTRUCTIONS_MAX}
+              />
+            </div>
+          </TabsContent>
+
+          <TabsContent className="mt-5" value="defaults">
+            <div className="mb-4 text-sm">
+              These are the settings your workspace begins with when selected.
+            </div>
+
+            <ChatSettingsForm
+              chatSettings={defaultChatSettings}
+              onChangeChatSettings={setDefaultChatSettings}
+            />
+          </TabsContent>
+        </Tabs>
+      </div>
+
+      <div className="mt-6 flex justify-between">
+        <div>
+          {!selectedWorkspace.is_home && (
+            <DeleteWorkspace
+              workspace={selectedWorkspace}
+              onDelete={() => (embedded ? onClose?.() : setIsOpen(false))}
+            />
+          )}
+        </div>
+
+        <div className="space-x-2">
+          <Button
+            variant="ghost"
+            onClick={() => (embedded ? onClose?.() : setIsOpen(false))}
+          >
+            Cancel
+          </Button>
+
+          <Button ref={buttonRef} onClick={handleSave}>
+            Save
+          </Button>
+        </div>
+      </div>
+    </>
+  )
+
+  if (embedded) {
+    return (
+      <div className="flex min-h-[400px] flex-col" onKeyDown={handleKeyDown}>
+        {settingsContent}
+      </div>
+    )
+  }
+
   return (
     <Sheet open={isOpen} onOpenChange={setIsOpen}>
       <SheetTrigger asChild>
-        <WithTooltip
-          display={<div>Workspace Settings</div>}
-          trigger={
-            <IconSettings
-              className="ml-3 cursor-pointer pr-[5px] hover:opacity-50"
-              size={32}
-              onClick={() => setIsOpen(true)}
-            />
-          }
-        />
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          className="size-9 shrink-0"
+          aria-label="Workspace settings"
+        >
+          <IconSettings size={18} />
+        </Button>
       </SheetTrigger>
 
       <SheetContent
@@ -184,116 +355,7 @@ export const WorkspaceSettings: FC<WorkspaceSettingsProps> = ({}) => {
         side="left"
         onKeyDown={handleKeyDown}
       >
-        <div className="grow overflow-auto">
-          <SheetHeader>
-            <SheetTitle className="flex items-center justify-between">
-              Workspace Settings
-              {selectedWorkspace?.is_home && <IconHome />}
-            </SheetTitle>
-
-            {selectedWorkspace?.is_home && (
-              <div className="text-sm font-light">
-                This is your home workspace for personal use.
-              </div>
-            )}
-          </SheetHeader>
-
-          <Tabs defaultValue="main">
-            <TabsList className="mt-4 grid w-full grid-cols-2">
-              <TabsTrigger value="main">Main</TabsTrigger>
-              <TabsTrigger value="defaults">Defaults</TabsTrigger>
-            </TabsList>
-
-            <TabsContent className="mt-4 space-y-4" value="main">
-              <>
-                <div className="space-y-1">
-                  <Label>Workspace Name</Label>
-
-                  <Input
-                    placeholder="Name..."
-                    value={name}
-                    onChange={e => setName(e.target.value)}
-                  />
-                </div>
-
-                {/* <div className="space-y-1">
-                  <Label>Description</Label>
-
-                  <Input
-                    placeholder="Description... (optional)"
-                    value={description}
-                    onChange={e => setDescription(e.target.value)}
-                  />
-                </div> */}
-
-                <div className="space-y-1">
-                  <Label>Workspace Image</Label>
-
-                  <ImagePicker
-                    src={imageLink}
-                    image={selectedImage}
-                    onSrcChange={setImageLink}
-                    onImageChange={setSelectedImage}
-                    width={50}
-                    height={50}
-                  />
-                </div>
-              </>
-
-              <div className="space-y-1">
-                <Label>
-                  How would you like the AI to respond in this workspace?
-                </Label>
-
-                <TextareaAutosize
-                  placeholder="Instructions... (optional)"
-                  value={instructions}
-                  onValueChange={setInstructions}
-                  minRows={5}
-                  maxRows={10}
-                  maxLength={1500}
-                />
-
-                <LimitDisplay
-                  used={instructions.length}
-                  limit={WORKSPACE_INSTRUCTIONS_MAX}
-                />
-              </div>
-            </TabsContent>
-
-            <TabsContent className="mt-5" value="defaults">
-              <div className="mb-4 text-sm">
-                These are the settings your workspace begins with when selected.
-              </div>
-
-              <ChatSettingsForm
-                chatSettings={defaultChatSettings as any}
-                onChangeChatSettings={setDefaultChatSettings}
-              />
-            </TabsContent>
-          </Tabs>
-        </div>
-
-        <div className="mt-6 flex justify-between">
-          <div>
-            {!selectedWorkspace.is_home && (
-              <DeleteWorkspace
-                workspace={selectedWorkspace}
-                onDelete={() => setIsOpen(false)}
-              />
-            )}
-          </div>
-
-          <div className="space-x-2">
-            <Button variant="ghost" onClick={() => setIsOpen(false)}>
-              Cancel
-            </Button>
-
-            <Button ref={buttonRef} onClick={handleSave}>
-              Save
-            </Button>
-          </div>
-        </div>
+        {settingsContent}
       </SheetContent>
     </Sheet>
   )

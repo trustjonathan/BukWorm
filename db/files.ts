@@ -1,8 +1,7 @@
 import { supabase } from "@/lib/supabase/browser-client"
 import { TablesInsert, TablesUpdate } from "@/supabase/types"
 import mammoth from "mammoth"
-import { toast } from "sonner"
-import { uploadFile } from "./storage/files"
+import { deleteFileFromStorage, uploadFile } from "./storage/files"
 
 export const getFileById = async (fileId: string) => {
   const { data: file, error } = await supabase
@@ -25,7 +24,10 @@ export const getFileWorkspacesByWorkspaceId = async (workspaceId: string) => {
       `
       id,
       name,
-      files (*)
+      files (*),
+      collections (
+        files (*)
+      )
     `
     )
     .eq("id", workspaceId)
@@ -35,7 +37,20 @@ export const getFileWorkspacesByWorkspaceId = async (workspaceId: string) => {
     throw new Error(error.message)
   }
 
-  return workspace
+  const filesById = new Map(
+    workspace.files.map(file => [file.id, file] as const)
+  )
+
+  for (const collection of workspace.collections) {
+    for (const file of collection.files) {
+      filesById.set(file.id, file)
+    }
+  }
+
+  return {
+    ...workspace,
+    files: Array.from(filesById.values())
+  }
 }
 
 export const getFileWorkspacesByFileId = async (fileId: string) => {
@@ -114,46 +129,43 @@ export const createFile = async (
     throw new Error(error.message)
   }
 
-  await createFileWorkspace({
-    user_id: createdFile.user_id,
-    file_id: createdFile.id,
-    workspace_id
-  })
+  let filePath: string | null = null
+  let filePathSaved = false
 
-  const filePath = await uploadFile(file, {
-    name: createdFile.name,
-    user_id: createdFile.user_id,
-    file_id: createdFile.name
-  })
-
-  await updateFile(createdFile.id, {
-    file_path: filePath
-  })
-
-  const formData = new FormData()
-  formData.append("file_id", createdFile.id)
-  formData.append("embeddingsProvider", embeddingsProvider)
-
-  const response = await fetch("/api/retrieval/process", {
-    method: "POST",
-    body: formData
-  })
-
-  if (!response.ok) {
-    const jsonText = await response.text()
-    const json = JSON.parse(jsonText)
-    console.error(
-      `Error processing file:${createdFile.id}, status:${response.status}, response:${json.message}`
-    )
-    toast.error("Failed to process file. Reason:" + json.message, {
-      duration: 10000
+  try {
+    await createFileWorkspace({
+      user_id: createdFile.user_id,
+      file_id: createdFile.id,
+      workspace_id
     })
-    await deleteFile(createdFile.id)
+
+    filePath = await uploadFile(file, {
+      name: createdFile.name,
+      user_id: createdFile.user_id,
+      file_id: createdFile.id
+    })
+
+    await updateFile(createdFile.id, {
+      file_path: filePath
+    })
+    filePathSaved = true
+
+    const formData = new FormData()
+    formData.append("file_id", createdFile.id)
+    formData.append("embeddingsProvider", embeddingsProvider)
+
+    const response = await fetch("/api/retrieval/process", {
+      method: "POST",
+      body: formData
+    })
+
+    await assertFileProcessingSucceeded(response, createdFile.id)
+
+    return await getFileById(createdFile.id)
+  } catch (error) {
+    await cleanupFailedFileCreation(createdFile.id, filePath, filePathSaved)
+    throw error
   }
-
-  const fetchedFile = await getFileById(createdFile.id)
-
-  return fetchedFile
 }
 
 // // Handle docx files
@@ -174,50 +186,100 @@ export const createDocXFile = async (
     throw new Error(error.message)
   }
 
-  await createFileWorkspace({
-    user_id: createdFile.user_id,
-    file_id: createdFile.id,
-    workspace_id
-  })
+  let filePath: string | null = null
+  let filePathSaved = false
 
-  const filePath = await uploadFile(file, {
-    name: createdFile.name,
-    user_id: createdFile.user_id,
-    file_id: createdFile.name
-  })
-
-  await updateFile(createdFile.id, {
-    file_path: filePath
-  })
-
-  const response = await fetch("/api/retrieval/process/docx", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify({
-      text: text,
-      fileId: createdFile.id,
-      embeddingsProvider,
-      fileExtension: "docx"
+  try {
+    await createFileWorkspace({
+      user_id: createdFile.user_id,
+      file_id: createdFile.id,
+      workspace_id
     })
-  })
 
-  if (!response.ok) {
-    const jsonText = await response.text()
-    const json = JSON.parse(jsonText)
-    console.error(
-      `Error processing file:${createdFile.id}, status:${response.status}, response:${json.message}`
-    )
-    toast.error("Failed to process file. Reason:" + json.message, {
-      duration: 10000
+    filePath = await uploadFile(file, {
+      name: createdFile.name,
+      user_id: createdFile.user_id,
+      file_id: createdFile.id
     })
-    await deleteFile(createdFile.id)
+
+    await updateFile(createdFile.id, {
+      file_path: filePath
+    })
+    filePathSaved = true
+
+    const response = await fetch("/api/retrieval/process/docx", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        text,
+        fileId: createdFile.id,
+        embeddingsProvider,
+        fileExtension: "docx"
+      })
+    })
+
+    await assertFileProcessingSucceeded(response, createdFile.id)
+
+    return await getFileById(createdFile.id)
+  } catch (error) {
+    await cleanupFailedFileCreation(createdFile.id, filePath, filePathSaved)
+    throw error
+  }
+}
+
+const assertFileProcessingSucceeded = async (
+  response: Response,
+  fileId: string
+) => {
+  if (response.ok) return
+
+  const responseText = await response.text()
+  let message = responseText
+
+  try {
+    const body = JSON.parse(responseText)
+    if (typeof body.message === "string") message = body.message
+  } catch {
+    if (!responseText) message = "The file processing request failed."
   }
 
-  const fetchedFile = await getFileById(createdFile.id)
+  console.error(
+    `Error processing file:${fileId}, status:${response.status}, response:${message}`
+  )
+  throw new Error(`Failed to process file. ${message}`)
+}
 
-  return fetchedFile
+const cleanupFailedFileCreation = async (
+  fileId: string,
+  filePath: string | null,
+  filePathSaved: boolean
+) => {
+  if (filePath && !filePathSaved) {
+    try {
+      await deleteFileFromStorage(filePath)
+    } catch (error) {
+      console.error(`Failed to remove incomplete file upload ${fileId}.`, error)
+    }
+  }
+
+  try {
+    await deleteFile(fileId)
+  } catch (error) {
+    console.error(`Failed to remove incomplete file record ${fileId}.`, error)
+
+    if (filePath && filePathSaved) {
+      try {
+        await deleteFileFromStorage(filePath)
+      } catch (storageError) {
+        console.error(
+          `Failed to remove incomplete file upload ${fileId}.`,
+          storageError
+        )
+      }
+    }
+  }
 }
 
 export const createFiles = async (

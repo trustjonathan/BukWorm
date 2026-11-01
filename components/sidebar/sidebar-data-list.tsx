@@ -10,7 +10,17 @@ import { updateTool } from "@/db/tools"
 import { cn } from "@/lib/utils"
 import { Tables } from "@/supabase/types"
 import { ContentType, DataItemType, DataListType } from "@/types"
+import { IconFolder, IconFolderOff } from "@tabler/icons-react"
 import { FC, useContext, useEffect, useRef, useState } from "react"
+import { toast } from "sonner"
+import { Button } from "../ui/button"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuTrigger
+} from "../ui/dropdown-menu"
 import { Separator } from "../ui/separator"
 import { AssistantItem } from "./items/assistants/assistant-item"
 import { ChatItem } from "./items/chat/chat-item"
@@ -25,13 +35,21 @@ import { ToolItem } from "./items/tools/tool-item"
 interface SidebarDataListProps {
   contentType: ContentType
   data: DataListType
+  allData?: DataListType
   folders: Tables<"folders">[]
+  onNavigate?: () => void
+  searchTerm?: string
+  isSearching?: boolean
 }
 
 export const SidebarDataList: FC<SidebarDataListProps> = ({
   contentType,
   data,
-  folders
+  allData,
+  folders,
+  onNavigate,
+  searchTerm = "",
+  isSearching = false
 }) => {
   const {
     setChats,
@@ -45,6 +63,7 @@ export const SidebarDataList: FC<SidebarDataListProps> = ({
   } = useContext(ChatbotUIContext)
 
   const divRef = useRef<HTMLDivElement>(null)
+  const allItems = allData || data
 
   const [isOverflowing, setIsOverflowing] = useState(false)
   const [isDragOver, setIsDragOver] = useState(false)
@@ -55,7 +74,13 @@ export const SidebarDataList: FC<SidebarDataListProps> = ({
   ) => {
     switch (contentType) {
       case "chats":
-        return <ChatItem key={item.id} chat={item as Tables<"chats">} />
+        return (
+          <ChatItem
+            key={item.id}
+            chat={item as Tables<"chats">}
+            onNavigate={onNavigate}
+          />
+        )
 
       case "presets":
         return <PresetItem key={item.id} preset={item as Tables<"presets">} />
@@ -155,7 +180,7 @@ export const SidebarDataList: FC<SidebarDataListProps> = ({
   }
 
   const updateFolder = async (itemId: string, folderId: string | null) => {
-    const item: any = data.find(item => item.id === itemId)
+    const item: any = allItems.find(item => item.id === itemId)
 
     if (!item) return null
 
@@ -164,16 +189,70 @@ export const SidebarDataList: FC<SidebarDataListProps> = ({
 
     if (!updateFunction || !setStateFunction) return
 
-    const updatedItem = await updateFunction(item.id, {
-      folder_id: folderId
-    })
+    try {
+      const updatedItem = await updateFunction(item.id, {
+        folder_id: folderId
+      })
 
-    setStateFunction((items: any) =>
-      items.map((item: any) =>
-        item.id === updatedItem.id ? updatedItem : item
+      setStateFunction((items: any) =>
+        items.map((currentItem: any) =>
+          currentItem.id === updatedItem.id ? updatedItem : currentItem
+        )
       )
-    )
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Failed to move item."
+      )
+    }
   }
+
+  const renderDataItem = (item: DataItemType) => (
+    <div key={item.id} className="group/item flex min-w-0 items-center">
+      <div
+        className="min-w-0 flex-1"
+        draggable
+        onDragStart={e => handleDragStart(e, item.id)}
+      >
+        {getDataListComponent(contentType, item)}
+      </div>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="size-9 shrink-0 opacity-100 focus-visible:opacity-100 sm:opacity-0 sm:group-hover/item:opacity-100"
+            aria-label={`Move ${item.name}`}
+          >
+            <IconFolder size={16} />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end">
+          <DropdownMenuLabel>Move to folder</DropdownMenuLabel>
+          {item.folder_id && (
+            <DropdownMenuItem onSelect={() => void updateFolder(item.id, null)}>
+              <IconFolderOff className="mr-2" size={16} />
+              Unfile
+            </DropdownMenuItem>
+          )}
+          {folders
+            .filter(folder => folder.id !== item.folder_id)
+            .map(folder => (
+              <DropdownMenuItem
+                key={folder.id}
+                onSelect={() => void updateFolder(item.id, folder.id)}
+              >
+                <IconFolder className="mr-2" size={16} />
+                {folder.name}
+              </DropdownMenuItem>
+            ))}
+          {folders.length === 0 && !item.folder_id && (
+            <DropdownMenuItem disabled>No folders available</DropdownMenuItem>
+          )}
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </div>
+  )
 
   const handleDragEnter = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault()
@@ -226,8 +305,12 @@ export const SidebarDataList: FC<SidebarDataListProps> = ({
       >
         {data.length === 0 && (
           <div className="flex grow flex-col items-center justify-center">
-            <div className=" text-centertext-muted-foreground p-8 text-lg italic">
-              No {contentType}.
+            <div className="text-muted-foreground p-8 text-center text-sm">
+              {searchTerm
+                ? isSearching
+                  ? "Searching messages…"
+                  : `No matches for "${searchTerm}".`
+                : `No ${contentType}.`}
             </div>
           </div>
         )}
@@ -247,15 +330,7 @@ export const SidebarDataList: FC<SidebarDataListProps> = ({
               >
                 {dataWithFolders
                   .filter(item => item.folder_id === folder.id)
-                  .map(item => (
-                    <div
-                      key={item.id}
-                      draggable
-                      onDragStart={e => handleDragStart(e, item.id)}
-                    >
-                      {getDataListComponent(contentType, item)}
-                    </div>
-                  ))}
+                  .map(item => renderDataItem(item as DataItemType))}
               </Folder>
             ))}
 
@@ -291,15 +366,9 @@ export const SidebarDataList: FC<SidebarDataListProps> = ({
                             onDragLeave={handleDragLeave}
                             onDragOver={handleDragOver}
                           >
-                            {sortedData.map((item: any) => (
-                              <div
-                                key={item.id}
-                                draggable
-                                onDragStart={e => handleDragStart(e, item.id)}
-                              >
-                                {getDataListComponent(contentType, item)}
-                              </div>
-                            ))}
+                            {sortedData.map((item: DataItemType) =>
+                              renderDataItem(item)
+                            )}
                           </div>
                         </div>
                       )
@@ -315,17 +384,9 @@ export const SidebarDataList: FC<SidebarDataListProps> = ({
                 onDragLeave={handleDragLeave}
                 onDragOver={handleDragOver}
               >
-                {dataWithoutFolders.map(item => {
-                  return (
-                    <div
-                      key={item.id}
-                      draggable
-                      onDragStart={e => handleDragStart(e, item.id)}
-                    >
-                      {getDataListComponent(contentType, item)}
-                    </div>
-                  )
-                })}
+                {dataWithoutFolders.map(item =>
+                  renderDataItem(item as DataItemType)
+                )}
               </div>
             )}
           </div>

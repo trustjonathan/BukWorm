@@ -1,5 +1,4 @@
 import { ModelIcon } from "@/components/models/model-icon"
-import { WithTooltip } from "@/components/ui/with-tooltip"
 import { ChatbotUIContext } from "@/context/context"
 import { LLM_LIST } from "@/lib/models/llm/llm-list"
 import { cn } from "@/lib/utils"
@@ -8,15 +7,17 @@ import { LLM } from "@/types"
 import { IconRobotFace } from "@tabler/icons-react"
 import Image from "next/image"
 import { useParams, useRouter } from "next/navigation"
-import { FC, useContext, useRef } from "react"
+import { FC, useContext } from "react"
+import { Button } from "../../../ui/button"
 import { DeleteChat } from "./delete-chat"
 import { UpdateChat } from "./update-chat"
 
 interface ChatItemProps {
   chat: Tables<"chats">
+  onNavigate?: () => void
 }
 
-export const ChatItem: FC<ChatItemProps> = ({ chat }) => {
+export const ChatItem: FC<ChatItemProps> = ({ chat, onNavigate }) => {
   const {
     selectedWorkspace,
     selectedChat,
@@ -29,18 +30,10 @@ export const ChatItem: FC<ChatItemProps> = ({ chat }) => {
   const params = useParams()
   const isActive = params.chatid === chat.id || selectedChat?.id === chat.id
 
-  const itemRef = useRef<HTMLDivElement>(null)
-
   const handleClick = () => {
     if (!selectedWorkspace) return
-    return router.push(`/${selectedWorkspace.id}/chat/${chat.id}`)
-  }
-
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
-    if (e.key === "Enter") {
-      e.stopPropagation()
-      itemRef.current?.click()
-    }
+    router.push(`/${selectedWorkspace.id}/chat/${chat.id}`)
+    onNavigate?.()
   }
 
   const MODEL_DATA = [
@@ -54,53 +47,42 @@ export const ChatItem: FC<ChatItemProps> = ({ chat }) => {
   )?.base64
 
   return (
-    <div
-      ref={itemRef}
-      className={cn(
-        "hover:bg-accent focus:bg-accent group flex w-full cursor-pointer items-center rounded p-2 hover:opacity-50 focus:outline-none",
-        isActive && "bg-accent"
-      )}
-      tabIndex={0}
-      onKeyDown={handleKeyDown}
-      onClick={handleClick}
-    >
-      {chat.assistant_id ? (
-        assistantImage ? (
-          <Image
-            style={{ width: "30px", height: "30px" }}
-            className="rounded"
-            src={assistantImage}
-            alt="Assistant image"
-            width={30}
-            height={30}
-          />
-        ) : (
-          <IconRobotFace
-            className="bg-primary text-secondary border-primary rounded border-DEFAULT p-1"
-            size={30}
-          />
-        )
-      ) : (
-        <WithTooltip
-          delayDuration={200}
-          display={<div>{MODEL_DATA?.modelName}</div>}
-          trigger={
-            <ModelIcon provider={MODEL_DATA?.provider} height={30} width={30} />
-          }
-        />
-      )}
-
-      <div className="ml-3 flex-1 truncate text-sm font-semibold">
-        {chat.name}
-      </div>
-
-      <div
-        onClick={e => {
-          e.stopPropagation()
-          e.preventDefault()
-        }}
-        className={`ml-2 flex space-x-2 ${!isActive && "w-11 opacity-0 group-hover:opacity-100"}`}
+    <div className="group flex min-w-0 items-center">
+      <Button
+        type="button"
+        variant="ghost"
+        aria-current={isActive ? "page" : undefined}
+        className={cn(
+          "hover:bg-accent h-auto min-h-9 min-w-0 flex-1 justify-start gap-3 rounded-md px-2 py-1.5 text-left hover:opacity-100 focus-visible:ring-2",
+          isActive && "bg-accent"
+        )}
+        onClick={handleClick}
+        title={chat.name}
       >
+        {chat.assistant_id ? (
+          assistantImage ? (
+            <Image
+              className="size-7 shrink-0 rounded object-cover"
+              src={assistantImage}
+              alt=""
+              width={28}
+              height={28}
+            />
+          ) : (
+            <IconRobotFace className="bg-primary text-secondary border-primary size-7 shrink-0 rounded border p-1" />
+          )
+        ) : (
+          <span title={MODEL_DATA?.modelName}>
+            <ModelIcon provider={MODEL_DATA?.provider} height={28} width={28} />
+          </span>
+        )}
+
+        <span className="min-w-0 flex-1 truncate text-sm font-medium">
+          {chat.name}
+        </span>
+      </Button>
+
+      <div className="ml-1 flex shrink-0 items-center gap-1 opacity-100 sm:opacity-0 sm:group-focus-within:opacity-100 sm:group-hover:opacity-100">
         <UpdateChat chat={chat} />
 
         <DeleteChat chat={chat} />

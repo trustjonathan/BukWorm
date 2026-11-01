@@ -13,18 +13,7 @@ export const uploadWorkspaceImage = async (
     throw new Error(`Image must be less than ${imageSizeLimit / 1000000}MB`)
   }
 
-  const currentPath = workspace.image_path
-  let filePath = `${workspace.user_id}/${workspace.id}/${Date.now()}`
-
-  if (currentPath.length > 0) {
-    const { error: deleteError } = await supabase.storage
-      .from(bucket)
-      .remove([currentPath])
-
-    if (deleteError) {
-      throw new Error("Error deleting old image")
-    }
-  }
+  const filePath = `${workspace.user_id}/${workspace.id}/${Date.now()}`
 
   const { error } = await supabase.storage
     .from(bucket)
@@ -37,6 +26,16 @@ export const uploadWorkspaceImage = async (
   }
 
   return filePath
+}
+
+export const deleteWorkspaceImage = async (filePath: string) => {
+  const { error } = await supabase.storage
+    .from("workspace_images")
+    .remove([filePath])
+
+  if (error) {
+    throw new Error("Error deleting old workspace image")
+  }
 }
 
 export const getWorkspaceImageFromStorage = async (filePath: string) => {

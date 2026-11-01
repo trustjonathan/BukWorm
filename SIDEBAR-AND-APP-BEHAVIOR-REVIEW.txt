@@ -1,0 +1,564 @@
+MATRIX AI - SIDEBAR AND APP BEHAVIOR REVIEW
+Review date: 2026-11-01
+
+PURPOSE
+Comprehensive, read-only review of Matrix AI's sidebar and related app behavior,
+including navigation, folders, drag-and-drop, workspaces (the closest analogue
+to Claude Projects), and settings. Findings distinguish source-verified behavior
+from product recommendations. This review does not change application code.
+
+SCOPE AND METHOD
+- Read the active sidebar, folder, item, workspace, settings, chat-upload, and
+  route-loading components.
+- Inspected the shared browser pages for the rendered workspace, navigation
+  categories, chat list, workspace controls, and Quick Settings.
+- Compared project and file workflows with current Claude Help Center
+  documentation listed at the end of this report.
+- Did not create, rename, delete, upload, or move user data while reviewing.
+- Source references below use paths relative to chatbot-ui and line numbers as
+  they appeared during this review. A source reference identifies evidence; it
+  is not a claim that every edge case was reproduced in a live account.
+
+EXECUTIVE SUMMARY
+The sidebar is a single-column accordion organized into Chats, Prompts, Presets,
+Files, Collections, Assistants, Tools, and Models. Chats are grouped by date
+unless placed in a folder. Items can be edited/deleted; non-chat resources can
+also be assigned to workspaces. Workspaces hold their own chat history,
+instructions, defaults, and workspace-associated resources.
+
+The largest risks are not styling issues:
+1. The chat-delete keyboard shortcut is registered once per chat row, so one
+   shortcut event can open multiple delete dialogs. Deleting any chat also
+   resets the current chat view, even when the deleted chat was not active.
+2. Workspace settings do not reinitialize when the selected workspace changes.
+   Saving can apply stale form values to another workspace and clears its image
+   path when no replacement image was selected.
+3. Workspace default settings are not consistently loaded/applied; explicit
+   false context flags become true, and the saved default model is not used by
+   the workspace route loader.
+4. File drop imports only the first file. Unsupported types can reject without
+   a user-facing error, and image uploads are not revalidated against the
+   selected model in the shared file handler.
+5. "Delete Folder & Included Items" deletes file records directly but does not
+   delete associated file objects from storage. On a database error, the UI
+   still removes the records locally and proceeds to folder deletion.
+6. Mobile chat/workspace selection does not close the sidebar drawer; sidebar
+   visibility is persisted inconsistently between close paths.
+
+PRIORITY FINDINGS AND PROPOSED FIXES
+
+P1 - Chat delete shortcut is registered by every chat row
+Evidence:
+  components/sidebar/items/chat/delete-chat.tsx:24
+  components/sidebar/items/chat/chat-item.tsx:90-106
+  lib/hooks/use-hotkey.tsx:3-15
+Behavior:
+  DeleteChat is rendered for each chat. Each instance registers the same
+  Meta+Shift+Backspace window listener. A single key press calls every mounted
+  instance's setShowChatDialog(true), potentially opening several confirmation
+  dialogs at once. The delete handler also always calls handleNewChat(), which
+  clears the active conversation and routes to the workspace's empty chat view,
+  even if the user deleted a different, inactive chat.
+Recommended fix:
+  Register the shortcut once at the chat-list or workspace level and target one
+  explicit chat (preferably the selected chat, or a focused row). On deletion,
+  preserve the currently active chat if it was not deleted; only navigate to an
+  empty/new-chat view when the active chat itself was deleted. Keep a single
+  confirmation dialog.
+Confidence: High; the component-per-row listener and unconditional reset are
+  explicit in the source.
+
+P1 - Workspace settings can be stale after switching workspaces
+Evidence:
+  components/workspace/workspace-settings.tsx:48-68
+  components/workspace/workspace-settings.tsx:81-118
+  components/utility/workspace-switcher.tsx:81-89
+Behavior:
+  Workspace settings fields are initialized from selectedWorkspace once. The
+  form has no effect that refreshes name, instructions, or defaults when the
+  selected workspace changes. The settings component remains mounted in the
+  sidebar while the WorkspaceSwitcher changes the selected workspace. Opening
+  settings after switching can therefore show values from the previous
+  workspace; saving may write those stale values to the newly selected one.
+Recommended fix:
+  Reinitialize the form when selectedWorkspace.id changes, or mount the editor
+  against a captured workspace ID and reload that workspace's values before
+  editing. Disable Save while a workspace switch or save is in progress.
+Confidence: High for the state lifecycle; confirm with a controlled two-
+workspace test before release.
+
+P1 - Saving workspace settings can clear an existing workspace image
+Evidence:
+  components/workspace/workspace-settings.tsx:81-109
+Behavior:
+  handleSave starts imagePath as an empty string and sends image_path: imagePath
+  on every save. If the user changes only the name or instructions, the
+  existing image path is replaced with an empty value.
+Recommended fix:
+  Preserve selectedWorkspace.image_path unless a new image is uploaded or the
+  user explicitly chooses a "remove image" action. Make image removal explicit.
+Confidence: High.
+
+P1 - Workspace defaults are not loaded and applied consistently
+Evidence:
+  app/[locale]/[workspaceid]/layout.tsx:159-169
+  components/workspace/workspace-settings.tsx:122-138
+Behavior:
+  The workspace route loader sets model to DEFAULT_GOOGLE_MODEL_ID rather than
+  workspace.default_model, and sets embeddingsProvider to "local" rather than
+  the workspace value. It uses `workspace?.include_profile_context || true`
+  and the equivalent workspace-instructions expression, so stored false values
+  are forced to true. WorkspaceSettings also updates the live chat settings
+  only if both inclusion flags are truthy; a saved false value bypasses that
+  update. The database save and current UI state can disagree.
+Recommended fix:
+  Load every setting from the workspace with nullish defaults (not `|| true`),
+  and apply false booleans as valid values. Use the same normalized settings
+  object for persistence and in-memory state. Add tests for both true and false,
+  non-default model, and non-local embedding provider.
+Confidence: High; source shows the inconsistent values and boolean gate.
+
+P1 - File drop is single-file and has weak failure handling
+Evidence:
+  components/ui/dashboard.tsx:67-84, 136-139
+  components/chat/chat-input.tsx:225-236
+  components/chat/chat-hooks/use-select-file-handler.tsx:48-61, 81-136, 139-195
+Behavior:
+  Dropping multiple files processes only dataTransfer.files[0]; the file input
+  likewise passes only files[0] and does not declare multiple. The input's
+  accept list is model-dependent, but handleSelectDeviceFile accepts any MIME
+  type containing "image" before checking the accepted-file list, so drag/drop
+  can bypass the model's image-input restriction. Unsupported types throw from
+  the async handler; the dashboard drop callback does not catch that rejection
+  or show a toast. The DOCX extraction/create path occurs before the later
+  reader.onloadend try/catch, so its failures can leave the loading item with
+  no visible error. Drag enter/leave state is toggled without checking whether
+  the pointer actually left the drop surface, which can make the overlay
+  flicker when moving across child elements.
+Recommended fix:
+  Decide and document whether multi-file upload is supported. If supported,
+  process all files with per-file status and individual removal/retry; if not,
+  clearly limit the picker and reject extra dropped files with a visible
+  message. Validate the MIME/model capability in the shared handler for every
+  entry path (picker, paste, drop). Catch and surface failures for parsing,
+  storage, and unsupported types, and always clear the matching loading item.
+  Use a drag-depth counter or related-target containment guard for enter/leave.
+  Show supported file types and limits before the user drops.
+Confidence: High for first-file-only, MIME validation asymmetry, and the
+uncaught DOCX path; drag flicker is a code-based risk requiring browser testing.
+
+P1 - Folder bulk delete can orphan stored files and present false success state
+Evidence:
+  components/sidebar/items/folders/delete-folder.tsx:56-76, 81-100
+  components/sidebar/items/all/sidebar-delete-item.tsx:42-47
+Behavior:
+  The normal file delete path calls deleteFileFromStorage before deleting the
+  file record. Folder bulk deletion instead deletes rows directly from the
+  content table. For the Files section this bypasses storage cleanup, leaving
+  uploaded objects behind. If the table delete returns an error, the handler
+  displays a toast but still removes matching rows from React state and calls
+  handleDeleteFolderOnly; the display can then disagree with persisted data.
+Recommended fix:
+  Reuse the canonical per-resource deletion path, including storage cleanup,
+  or add a server-side bulk-delete operation that handles both storage and
+  database records transactionally. On any failure, retain the affected state,
+  keep the folder dialog open, and report which step failed. Test partial
+  storage/database failure and retry behavior.
+Confidence: High for the difference between the normal file deletion path and
+  folder bulk deletion; backend cascade/storage behavior should be confirmed.
+
+P2 - Mobile navigation leaves the drawer open after selecting content
+Evidence:
+  components/ui/dashboard.tsx:108-130
+  components/sidebar/matrix-sidebar.tsx:112-115, 136-140
+  components/sidebar/items/chat/chat-item.tsx:34-36
+  components/utility/workspace-switcher.tsx:81-89
+Behavior:
+  New Chat closes the drawer below 1024px, but selecting an existing chat,
+  selecting/creating a workspace, or clicking the brand home action does not
+  call the mobile close handler. The drawer can remain over the destination.
+  In addition, the backdrop and swipe close paths only update React state,
+  while the collapse button and keyboard shortcut also persist showSidebar in
+  localStorage. The next reload can therefore reopen a drawer the user just
+  dismissed.
+Recommended fix:
+  Pass a consistent navigation-complete close callback to chat, workspace,
+  and home navigation actions. Persist visibility through one shared setter
+  used by every close/open path. Treat mobile drawer visibility separately
+  from desktop sidebar preference so a desktop preference cannot unexpectedly
+  open the mobile drawer.
+Confidence: High; navigation handlers and persistence calls differ by path.
+
+P2 - Desktop and mobile sidebars are both mounted
+Evidence:
+  components/ui/dashboard.tsx:98-130
+Behavior:
+  The desktop wrapper uses CSS `hidden` below the large breakpoint and the
+  mobile wrapper uses `lg:hidden`, but both render a MatrixSidebar component.
+  CSS hiding does not unmount the other tree. Each instance has its own open
+  section, search state, workspace/profile settings state, and keyboard
+  listeners. This duplicates work and can make behavior differ between the
+  visible and hidden sidebar trees.
+Recommended fix:
+  Render one sidebar instance and move it between desktop and mobile layouts,
+  or conditionally mount exactly one responsive variant. Keep shared section,
+  search, and drawer state at the Dashboard level if both layouts must remain.
+Confidence: High.
+
+P2 - Empty categories cannot create their first folder
+Evidence:
+  components/sidebar/matrix-sidebar.tsx:242-245
+  components/sidebar/sidebar-create-buttons.tsx:35-46, 106-114
+Behavior:
+  The folder button renders only when hasData is true. MatrixSidebar passes
+  count > 0, so a category with no resources has no folder-create action,
+  even though folders themselves are independent organizing structures.
+Recommended fix:
+  Show New Folder in every category, including empty ones, or explain the
+  prerequisite and provide a clear empty-state action. Focus the new folder
+  after creation and let the user rename it immediately.
+Confidence: High.
+
+P2 - Drag-to-folder move is limited by the active section and search filter
+Evidence:
+  components/sidebar/sidebar-data-list.tsx:157-175, 188-207, 241-255, 289-323
+  components/sidebar/matrix-sidebar.tsx:122-127, 260
+Behavior:
+  A drop target calls updateFolder, which looks up the dragged ID in that
+  SidebarDataList's `data` prop. That prop is the currently filtered dataset
+  for the current section. A cross-section drop, or a same-section drop while
+  the source item is filtered out, is silently ignored. There is no keyboard
+  or touch alternative to native HTML drag-and-drop, and item rows are
+  draggable as a whole without an obvious drag handle.
+Recommended fix:
+  Resolve the source resource through a typed global index and validate that
+  the destination folder has the same content type. Provide a visible
+  "Move to folder..." action for keyboard, touch, and users who prefer menus.
+  Confirm success/failure and announce it to assistive technology.
+Confidence: High for filtered/cross-section lookup limitation; touch behavior
+  should be verified on a device.
+
+P2 - Folder deletion controls are not keyboard-operable controls
+Evidence:
+  components/sidebar/items/folders/folder-item.tsx:70-90
+  components/sidebar/items/folders/update-folder.tsx:47-53
+  components/sidebar/items/folders/delete-folder.tsx:103-108
+Behavior:
+  Edit and delete DialogTriggers use icon SVG elements directly instead of
+  buttons. They have no explicit accessible name or keyboard focus target.
+  The delete confirmation dialog also has min-w-[550px], which is wider than
+  common mobile viewports and may overflow.
+Recommended fix:
+  Use real icon buttons with accessible labels, visible focus rings, and
+  36px minimum targets. Make the confirmation dialog width responsive
+  (for example max-width: calc(100vw - 2rem)) and stack its actions on narrow
+  screens.
+Confidence: High for missing semantic button/focus labels and fixed minimum
+  width.
+
+P2 - Chat and resource rows use incomplete keyboard interaction
+Evidence:
+  components/sidebar/items/chat/chat-item.tsx:57-65, 97-103
+  components/sidebar/items/all/sidebar-display-item.tsx:94-103
+  components/sidebar/items/chat/update-chat.tsx:47-53
+Behavior:
+  Chat rows and generic resource rows are divs made focusable with tabIndex;
+  Enter is handled but Space is not. Chat row actions are shown on hover, not
+  on keyboard focus, while edit/delete SVG triggers are not semantic buttons.
+  This makes some actions difficult to discover and use without a pointer.
+Recommended fix:
+  Use a native link/button for row navigation and native buttons for actions.
+  Reveal the action group on both hover and focus-within, give icon actions
+  labels, and ensure the list supports expected keyboard navigation without
+  triggering row navigation when an action is activated.
+Confidence: High for source semantics; perform a keyboard-only acceptance
+test after any fix.
+
+P2 - Search is local, name-only, and gives a misleading empty state
+Evidence:
+  components/sidebar/matrix-sidebar.tsx:122-127
+  components/sidebar/sidebar-search.tsx:1-21
+  components/sidebar/sidebar-data-list.tsx:225-231
+Behavior:
+  Search filters only item.name within one currently selected category and
+  workspace. It does not search conversation text, files' descriptions, or
+  resources across categories. When a search has no matches, the list says
+  "No chats/files/etc." as if the category itself were empty. Section count
+  badges continue to show unfiltered totals.
+Recommended fix:
+  Distinguish "No matches for [query]" from a truly empty category. Consider a
+  global chat-history search with matching-message snippets, plus optional
+  filters for current workspace/all workspaces and resource type. Preserve the
+  small local category filter for quick narrowing.
+Confidence: High for current name-only filter and empty-state wording.
+
+P2 - Workspace list search does not filter the Home workspace entry
+Evidence:
+  components/utility/workspace-switcher.tsx:148-190
+Behavior:
+  Non-home workspaces are filtered by the search value, but home workspaces
+  are always listed. A search can therefore return a Home entry that does not
+  match the query.
+Recommended fix:
+  Apply the same query to every workspace, label the home workspace clearly,
+  and provide an explicit no-results state.
+Confidence: High.
+
+P2 - Profile and workspace settings have mismatched save semantics
+Evidence:
+  components/utility/profile-settings.tsx:128-164, 310-314, 731-751
+  components/utility/theme-switcher.tsx:9-28
+Behavior:
+  Profile details and API-key fields are saved together with the Profile Save
+  button, while the theme control immediately writes localStorage and changes
+  the theme. Canceling the profile sheet does not undo a theme change made
+  during the same session. Logout is explicitly removed from tab order with
+  tabIndex=-1. Theme and JSON export controls sit in the footer beside profile
+  Save/Cancel and do not have a distinct "appearance/data" settings area.
+Recommended fix:
+  Separate immediate preferences from profile edits visually, explain which
+  changes save immediately, and avoid presenting immediate controls as if
+  they participate in a cancelable form. Keep Logout keyboard-accessible.
+  Consider grouping personal profile, provider credentials, appearance, and
+  data export into clearly named settings sections.
+Confidence: High.
+
+P2 - Workspace creation and editing are less discoverable than a project flow
+Evidence:
+  components/utility/workspace-switcher.tsx:47-70, 127-190
+  components/workspace/workspace-settings.tsx:205-280
+Behavior:
+  Creating a workspace immediately makes a workspace named "New Workspace"
+  from the current workspace's default settings, then routes to its chat.
+  The user must then discover workspace settings to name it and add
+  instructions. The description field exists in state but its editor is
+  commented out. The switcher is a popover of workspaces rather than a project
+  overview, and the inspected UI exposes no favorite/star, archive, shared
+  project lists, or move-chat-to-workspace action.
+Recommended fix:
+  Consider a short create flow that asks for a name and optional instructions,
+  then lands on a workspace/project overview. Add archive/unarchive separately
+  from destructive delete, and expose an explicit move-chat action. If
+  collaboration is not supported, label workspaces as personal/private rather
+  than implying shared projects.
+Confidence: High for what is present in the inspected UI; absence of a feature
+  in this component does not prove no other route/API supports it.
+
+P3 - Resource organization has uneven affordances
+Evidence:
+  components/sidebar/matrix-sidebar.tsx:196-260
+  components/sidebar/sidebar-data-list.tsx:98-147, 227-323
+  components/sidebar/sidebar-create-buttons.tsx:35-46, 78-114
+Behavior:
+  Every section is a single-open accordion, initially Chats. Chats are sorted
+  into Today, Yesterday, Previous Week, and Older when unfiled; other resource
+  types do not receive equivalent date grouping. Folder expansion is local to
+  each folder and starts collapsed. Folder creation begins with the duplicate-
+  prone generic name "New Folder". The create button label is generated by
+  slicing the plural type string, which can make irregular/plural labels
+  awkward.
+Recommended fix:
+  Keep the distinctions if intentional, but standardize empty states and
+  sorting expectations. Offer inline rename after folder creation, ensure
+  unique defaults, and use an explicit singular-label map for create actions.
+  Consider remembering expanded folders per workspace/category.
+Confidence: High.
+
+P3 - Route loading performs duplicate workspace loads on initial mount
+Evidence:
+  app/[locale]/[workspaceid]/layout.tsx:62-76, 91-172
+Behavior:
+  The authentication effect calls fetchWorkspaceData after session lookup, and
+  a separate effect keyed by workspaceId also calls fetchWorkspaceData. Both
+  effects run on initial mount, so item lists and workspace settings can be
+  fetched twice and can race to update the same context state.
+Recommended fix:
+  Combine the initial authentication and workspace load into one guarded
+  effect or deduplicate by workspace ID. Add cancellation/stale-response
+  protection when switching workspaces quickly; fetch independent resources
+  concurrently where safe.
+Confidence: High for two initial effect paths; runtime request count was not
+instrumented in this review.
+
+CURRENT SIDEBAR AND APP BEHAVIOR MAP
+
+Navigation and layout
+- MatrixSidebar is the active full sidebar. It has eight accordion categories:
+  Chats, Prompts, Presets, Files, Collections, Assistants, Tools, Models.
+- Only one category can be expanded at a time; Chats is initially expanded.
+- The sidebar header routes to the current workspace's chat route; the
+  WorkspaceSwitcher changes workspace and routes to its chat landing.
+- The prominent New Chat action clears active chat/input/attachments and starts
+  at the workspace chat landing. Below 1024px it also closes the drawer, but
+  that close is not persisted in the same way as the explicit collapse action.
+- On mobile, the dashboard uses a backdrop/drawer and supports edge swipe
+  gestures. Visibility is also read/written through localStorage and a
+  Meta+Shift+S shortcut.
+- Search terms and expanded section state are local component state, not
+  persisted across reloads.
+
+Chat history and resources
+- Chat rows navigate to /[workspace]/chat/[chatId], show a model/assistant
+  marker, and expose edit/delete actions. The edit action renames the chat.
+- Unfiled chats are grouped by last updated/created date. Folder contents are
+  listed before unfiled resources.
+- Other resource rows open edit sheets. Those sheets can update names,
+  descriptions, assignments, and resource-specific associations. When more
+  than one workspace exists, applicable items can be assigned to multiple
+  workspaces.
+- Assistants have files, collections, and tools relationships. Selecting an
+  assistant from the sidebar row opens its editor; the row-level "start chat"
+  affordance is commented out in the generic item component. A separate
+  assistant picker/chat flow exists elsewhere in the app.
+- Deleting chats, resources, folders, or workspaces is separate from edit.
+  Workspace delete requires typing its name; folder delete offers "folder only"
+  and "folder plus included items".
+
+Folders and drag-and-drop
+- Folder creation is per resource category and creates a folder with the name
+  "New Folder".
+- A folder can be renamed, expanded/collapsed, and deleted. Deleting only the
+  folder moves its items to the unfiled list in local state. Folder membership
+  can be changed by dragging resource rows onto folders or into the unfiled
+  list.
+- The chat canvas also accepts external file drops. That handler is distinct
+  from sidebar resource drag-and-drop. It imports the first dropped file into
+  the current chat's attachment flow; it does not drop a file into a workspace
+  knowledge area.
+- The file picker accepts CSV, DOCX, JSON, Markdown, PDF, plain text, and
+  images for image-capable models. Image paste is also supported by the chat
+  composer.
+
+Workspace/project behavior
+- A workspace is the closest current Matrix AI concept to a Claude Project:
+  chats are scoped by workspace; workspace instructions/defaults exist; files
+  and other resources can be associated with workspaces.
+- Collections are curated file sets, not workspace/project containers.
+- Workspaces can be created, switched, renamed, assigned an image, given
+  instructions, configured with chat defaults, and deleted if non-home.
+- Workspace description is stored in local form state but its input is
+  commented out in the settings UI.
+- No sharing/collaboration, archive, favorite/star, or explicit move-chat flow
+  was visible in the reviewed UI. Treat these as product gaps only if they are
+  intended requirements.
+
+Settings and preferences
+- Profile Settings contains profile details, profile context, provider/API-key
+  fields, theme toggle, export action, and logout.
+- Workspace Settings contains name/image/instructions and chat defaults.
+- Quick Settings contains model/preset/assistant choices and the
+  Instant/Natural/Relaxed streaming speed preference.
+- Sidebar visibility and streaming speed are persisted in localStorage. Theme
+  is also immediately written to localStorage by ThemeSwitcher.
+- The interface currently splits "settings" between these surfaces rather than
+  providing one app-wide preferences hub.
+
+CLAUDE AS A CURRENT PRODUCT BENCHMARK
+
+The comparison below uses current Claude Help Center descriptions, not an
+assumption that Matrix AI should copy Claude's implementation or pricing.
+Claude capabilities can vary by plan and rollout. The Help Center says a newer
+Projects version is in staged beta; the points below refer primarily to the
+current Projects experience described in the same official documentation.
+
+1. Make the workspace/project boundary explicit
+Claude describes Projects as self-contained workspaces with their own chat
+histories, files/knowledge, and instructions. Matrix already has a strong
+foundation in workspaces, workspace instructions, and workspace-scoped chats.
+Recommended parity direction: provide a recognizable workspace overview with
+its instructions, files/collections, and chats together, rather than making
+the user infer those connections from several sidebar categories.
+
+2. Persistent knowledge and chat attachments need visibly different targets
+Claude documents both chat-level uploads and project-level files that can be
+used across conversations. Matrix's composer drop currently feeds a chat
+attachment path; persistent workspace resources are managed separately in
+Files/Collections and their workspace assignments. Make the drop target and
+result explicit: "Attach to this chat" versus "Add to workspace knowledge."
+Avoid silently treating these as interchangeable.
+
+3. Support safe, reversible organization
+Claude's project management documentation describes starring projects for
+quick access, archiving/unarchiving, deleting, and moving chats into or between
+projects. Matrix currently offers workspace switching and destructive delete,
+but no visible star/archive/move-chat workflow. Star and archive are strong
+low-risk product improvements; moving a chat should preserve its messages and
+attachments and clearly explain any workspace-context change.
+
+4. Search the history, not only titles
+Claude's documented chat search can search previous conversations and help
+reuse prior context. Matrix's sidebar filters current-category item names only.
+Recommended next step: add global chat search with result snippets and
+workspace/date filters, while keeping category search for quick local
+filtering.
+
+5. Keep collaboration and privacy boundaries explicit
+Claude's sharing documentation distinguishes project knowledge access from
+chat sharing and describes private/shared project visibility for supported
+Team/Enterprise use. Matrix's reviewed workspace UI does not expose
+collaboration controls. If collaboration is planned, define workspace access
+and chat visibility separately; if not, clearly communicate that workspaces
+are personal rather than suggesting organization-wide projects.
+
+6. Make drag-and-drop outcomes resilient
+The Claude file-upload article documents both chat uploads and project files.
+Regardless of exact drag gestures in the Claude UI, a modern drop interaction
+should validate the entire batch, show accepted types/limits, provide
+per-file progress/removal/retry, and state whether files attach to the
+conversation or persist in project knowledge. Matrix's current first-file-only
+behavior and hidden error paths fall short of that reliability baseline.
+
+RECOMMENDED FIX ORDER
+1. Fix chat-delete shortcut scoping and do not reset unrelated active chats.
+2. Fix workspace settings lifecycle, image preservation, and default-setting
+   load/apply behavior.
+3. Make upload validation/error handling deterministic and decide on
+   multi-file support.
+4. Make folder bulk deletion storage-safe and failure-atomic.
+5. Standardize mobile navigation close/persistence behavior and eliminate
+   duplicate mounted sidebars.
+6. Allow empty-category folder creation; fix drag move resolution and add
+   accessible move controls.
+7. Improve keyboard semantics, search empty states, global chat search, and
+   project/workspace discoverability.
+8. Consider archive/star/move-chat and persistent project knowledge UX based on
+   product priorities.
+
+VALIDATION LIMITS AND OPEN QUESTIONS
+- No source code or app data was changed by this review. The only created
+  deliverable is this report.
+- Destructive actions, cross-workspace moves, uploads, and settings saves were
+  not executed. Those findings are based on the inspected event/state paths.
+- Mobile behavior was assessed from the responsive component structure and
+  prior shared-browser viewport checks, not a physical touch device.
+- Confirm with product owner whether Matrix workspaces are intended to be
+  personal project containers or collaborative spaces, and whether collection
+  files should automatically become workspace knowledge.
+- Confirm supported upload limits, allowed image behavior per model, and
+  whether chat deletion should always navigate to a new blank conversation.
+
+OFFICIAL CLAUDE REFERENCES
+
+What are projects?
+https://support.claude.com/en/articles/9517075-what-are-projects
+Documents self-contained project chat histories, knowledge/files,
+instructions, RAG, and the staged beta rollout for the newer version.
+
+How can I create and manage projects?
+https://support.claude.com/en/articles/9519177-how-can-i-create-and-manage-projects
+Documents project knowledge/instructions, project list tabs, starring,
+moving chats into/between projects, archiving/unarchiving, and deletion.
+
+Upload files to Claude
+https://support.claude.com/en/articles/8241126-upload-files-to-claude
+Official Help Center article updated July 23, 2026. Documents chat uploads and
+project Files as separate destinations, plus file-type and size guidance.
+
+Manage project visibility and sharing
+https://support.claude.com/en/articles/9519189-project-visibility-and-sharing
+Documents private/shared project access, shared-with-you discovery, and the
+distinction between project knowledge and chat sharing.
+
+Use Claude's chat search and memory to build on previous context
+https://support.claude.com/en/articles/11817273-use-claude-s-chat-search-and-memory-to-build-on-previous-context
+Documents searching previous conversations and managing memory behavior.

@@ -65,7 +65,7 @@ export const ChatInput: FC<ChatInputProps> = ({}) => {
 
   const { handleInputChange } = usePromptAndCommand()
 
-  const { filesToAccept, handleSelectDeviceFile } = useSelectFileHandler()
+  const { filesToAccept, handleSelectDeviceFiles } = useSelectFileHandler()
 
   const {
     setNewMessageContentToNextUserMessage,
@@ -145,6 +145,7 @@ export const ChatInput: FC<ChatInputProps> = ({}) => {
       llm => llm.modelId === chatSettings?.model
     )?.imageInput
 
+    const files: File[] = []
     const items = event.clipboardData.items
     for (const item of items) {
       if (item.type.indexOf("image") === 0) {
@@ -153,10 +154,11 @@ export const ChatInput: FC<ChatInputProps> = ({}) => {
           return
         }
         const file = item.getAsFile()
-        if (!file) return
-        handleSelectDeviceFile(file)
+        if (file) files.push(file)
       }
     }
+
+    if (files.length > 0) void handleSelectDeviceFiles(files)
   }
 
   return (
@@ -228,9 +230,11 @@ export const ChatInput: FC<ChatInputProps> = ({}) => {
             ref={fileInputRef}
             className="hidden"
             type="file"
+            multiple
             onChange={e => {
               if (!e.target.files) return
-              handleSelectDeviceFile(e.target.files[0])
+              void handleSelectDeviceFiles(e.target.files)
+              e.target.value = ""
             }}
             accept={filesToAccept}
           />

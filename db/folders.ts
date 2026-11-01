@@ -1,5 +1,6 @@
 import { supabase } from "@/lib/supabase/browser-client"
 import { TablesInsert, TablesUpdate } from "@/supabase/types"
+import { ContentType } from "@/types"
 
 export const getFoldersByWorkspaceId = async (workspaceId: string) => {
   const { data: folders, error } = await supabase
@@ -48,6 +49,22 @@ export const updateFolder = async (
 
 export const deleteFolder = async (folderId: string) => {
   const { error } = await supabase.from("folders").delete().eq("id", folderId)
+
+  if (error) {
+    throw new Error(error.message)
+  }
+
+  return true
+}
+
+export const deleteFolderAndItems = async (
+  folderId: string,
+  contentType: ContentType
+) => {
+  const { error } = await supabase.rpc("delete_folder_and_items", {
+    p_folder_id: folderId,
+    p_content_type: contentType
+  })
 
   if (error) {
     throw new Error(error.message)

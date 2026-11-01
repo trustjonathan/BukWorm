@@ -38,6 +38,7 @@ export const useChatHandler = () => {
   const {
     userInput,
     chatFiles,
+    files,
     setUserInput,
     setNewMessageImages,
     profile,
@@ -323,14 +324,24 @@ export const useChatHandler = () => {
     let retrievedFileItems: Tables<"file_items">[] = []
     try {
       if (
-        (newMessageFiles.length > 0 || chatFiles.length > 0) &&
+        (newMessageFiles.length > 0 ||
+          chatFiles.length > 0 ||
+          files.length > 0) &&
         useRetrieval
       ) {
         setToolInUse("retrieval")
         retrievedFileItems = await handleRetrieval(
           requestText,
           newMessageFiles,
-          chatFiles,
+          [
+            ...chatFiles,
+            ...files.map(file => ({
+              id: file.id,
+              name: file.name,
+              type: file.type,
+              file: null
+            }))
+          ],
           chatSettings.embeddingsProvider,
           sourceCount
         )
@@ -482,6 +493,13 @@ export const useChatHandler = () => {
     /** parent_id for threaded branch replies */
     parentId?: string | null
   ) => {
+    if (newMessageFiles.some(file => file.id.startsWith("pending:"))) {
+      toast.error(
+        "Wait for file uploads to finish or remove failed attachments."
+      )
+      return
+    }
+
     if (agentIds !== undefined) {
       return handleSendToNexusAgents(messageContent, chatMessages, agentIds)
     }
@@ -539,7 +557,9 @@ export const useChatHandler = () => {
       let retrievedFileItems: Tables<"file_items">[] = []
 
       if (
-        (newMessageFiles.length > 0 || chatFiles.length > 0) &&
+        (newMessageFiles.length > 0 ||
+          chatFiles.length > 0 ||
+          files.length > 0) &&
         useRetrieval
       ) {
         setToolInUse("retrieval")
@@ -547,7 +567,15 @@ export const useChatHandler = () => {
         retrievedFileItems = await handleRetrieval(
           userInput,
           newMessageFiles,
-          chatFiles,
+          [
+            ...chatFiles,
+            ...files.map(file => ({
+              id: file.id,
+              name: file.name,
+              type: file.type,
+              file: null
+            }))
+          ],
           chatSettings!.embeddingsProvider,
           sourceCount
         )

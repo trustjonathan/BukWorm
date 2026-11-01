@@ -1,5 +1,4 @@
 import { supabase } from "@/lib/supabase/browser-client"
-import { toast } from "sonner"
 
 export const uploadFile = async (
   file: File,
@@ -38,8 +37,7 @@ export const deleteFileFromStorage = async (filePath: string) => {
   const { error } = await supabase.storage.from("files").remove([filePath])
 
   if (error) {
-    toast.error("Failed to remove file!")
-    return
+    throw new Error(error.message)
   }
 }
 

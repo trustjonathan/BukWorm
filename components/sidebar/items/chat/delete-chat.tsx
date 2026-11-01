@@ -14,30 +14,57 @@ import { deleteChat } from "@/db/chats"
 import useHotkey from "@/lib/hooks/use-hotkey"
 import { Tables } from "@/supabase/types"
 import { IconTrash } from "@tabler/icons-react"
+import { useParams } from "next/navigation"
 import { FC, useContext, useRef, useState } from "react"
+import { toast } from "sonner"
 
 interface DeleteChatProps {
   chat: Tables<"chats">
 }
 
 export const DeleteChat: FC<DeleteChatProps> = ({ chat }) => {
-  useHotkey("Backspace", () => setShowChatDialog(true))
-
-  const { setChats } = useContext(ChatbotUIContext)
+  const { setChats, selectedChat } = useContext(ChatbotUIContext)
   const { handleNewChat } = useChatHandler()
+  const params = useParams()
+  const routeChatId = params.chatid
+  const isActive =
+    typeof routeChatId === "string"
+      ? routeChatId === chat.id
+      : selectedChat?.id === chat.id
 
   const buttonRef = useRef<HTMLButtonElement>(null)
 
   const [showChatDialog, setShowChatDialog] = useState(false)
 
+  const [isDeleting, setIsDeleting] = useState(false)
+
+  useHotkey(
+    "Backspace",
+    () => {
+      if (isActive) setShowChatDialog(true)
+    },
+    isActive
+  )
+
   const handleDeleteChat = async () => {
-    await deleteChat(chat.id)
+    setIsDeleting(true)
+    try {
+      await deleteChat(chat.id)
 
-    setChats(prevState => prevState.filter(c => c.id !== chat.id))
+      setChats(prevState => prevState.filter(c => c.id !== chat.id))
 
-    setShowChatDialog(false)
+      setShowChatDialog(false)
 
-    handleNewChat()
+      if (isActive) {
+        await handleNewChat()
+      }
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Failed to delete chat."
+      )
+    } finally {
+      setIsDeleting(false)
+    }
   }
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
@@ -49,7 +76,15 @@ export const DeleteChat: FC<DeleteChatProps> = ({ chat }) => {
   return (
     <Dialog open={showChatDialog} onOpenChange={setShowChatDialog}>
       <DialogTrigger asChild>
-        <IconTrash className="hover:opacity-50" size={18} />
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          className="size-9"
+          aria-label={`Delete ${chat.name}`}
+        >
+          <IconTrash size={18} />
+        </Button>
       </DialogTrigger>
 
       <DialogContent onKeyDown={handleKeyDown}>
@@ -62,13 +97,18 @@ export const DeleteChat: FC<DeleteChatProps> = ({ chat }) => {
         </DialogHeader>
 
         <DialogFooter>
-          <Button variant="ghost" onClick={() => setShowChatDialog(false)}>
+          <Button
+            variant="ghost"
+            disabled={isDeleting}
+            onClick={() => setShowChatDialog(false)}
+          >
             Cancel
           </Button>
 
           <Button
             ref={buttonRef}
             variant="destructive"
+            disabled={isDeleting}
             onClick={handleDeleteChat}
           >
             Delete

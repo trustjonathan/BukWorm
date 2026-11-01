@@ -1490,6 +1490,13 @@ export type Database = {
         }
         Returns: undefined
       }
+      delete_folder_and_items: {
+        Args: {
+          p_folder_id: string
+          p_content_type: string
+        }
+        Returns: undefined
+      }
       delete_storage_object: {
         Args: {
           bucket: string
@@ -1820,4 +1827,3 @@ export type Enums<
   : PublicEnumNameOrOptions extends keyof PublicSchema["Enums"]
     ? PublicSchema["Enums"][PublicEnumNameOrOptions]
     : never
-

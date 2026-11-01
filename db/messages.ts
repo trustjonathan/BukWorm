@@ -28,6 +28,24 @@ export const getMessagesByChatId = async (chatId: string) => {
   return messages
 }
 
+export const searchMessageChatIdsByWorkspace = async (
+  workspaceId: string,
+  searchTerm: string
+) => {
+  const { data: messages, error } = await supabase
+    .from("messages")
+    .select("chat_id, chats!inner(workspace_id)")
+    .eq("chats.workspace_id", workspaceId)
+    .ilike("content", `%${searchTerm}%`)
+    .limit(1000)
+
+  if (error) {
+    throw new Error(error.message)
+  }
+
+  return Array.from(new Set(messages.map(message => message.chat_id)))
+}
+
 export const createMessage = async (message: TablesInsert<"messages">) => {
   const { data: createdMessage, error } = await supabase
     .from("messages")
