@@ -49,6 +49,7 @@ import { TextareaAutosize } from "../ui/textarea-autosize"
 import { WithTooltip } from "../ui/with-tooltip"
 import { ThemeSwitcher } from "./theme-switcher"
 import { WorkspaceSettings } from "../workspace/workspace-settings"
+import { SettingsLibrary } from "./settings-library"
 
 type SettingsSection =
   | "profile"
@@ -65,6 +66,24 @@ const isSettingsSection = (
   section === "library" ||
   section === "appearance" ||
   section === "advanced"
+
+type LibraryType =
+  | "prompts"
+  | "presets"
+  | "files"
+  | "collections"
+  | "assistants"
+  | "tools"
+  | "models"
+
+const isLibraryType = (tab: string | null): tab is LibraryType =>
+  tab === "prompts" ||
+  tab === "presets" ||
+  tab === "files" ||
+  tab === "collections" ||
+  tab === "assistants" ||
+  tab === "tools" ||
+  tab === "models"
 
 interface ProfileSettingsProps {}
 
@@ -89,6 +108,7 @@ export const ProfileSettings: FC<ProfileSettingsProps> = ({}) => {
   const [isOpen, setIsOpen] = useState(false)
   const [settingsSection, setSettingsSection] =
     useState<SettingsSection>("profile")
+  const [libraryTab, setLibraryTab] = useState<LibraryType>("prompts")
 
   const [displayName, setDisplayName] = useState(profile?.display_name || "")
   const [username, setUsername] = useState(profile?.username || "")
@@ -157,16 +177,32 @@ export const ProfileSettings: FC<ProfileSettingsProps> = ({}) => {
     if (isSettingsSection(section)) {
       setSettingsSection(section)
       localStorage.setItem("matrixSettingsSection", section)
+      const tab = searchParams.get("tab")
+      if (section === "library" && isLibraryType(tab)) {
+        setLibraryTab(tab)
+      }
       setIsOpen(true)
     } else {
       setIsOpen(false)
     }
   }, [searchParams])
 
-  const updateSettingsQuery = (section?: SettingsSection) => {
+  const updateSettingsQuery = (
+    section?: SettingsSection,
+    tab?: LibraryType
+  ) => {
     const params = new URLSearchParams(searchParams.toString())
     if (section) {
       params.set("settings", section)
+      if (section === "library") {
+        const currentTab = params.get("tab")
+        params.set(
+          "tab",
+          tab || (isLibraryType(currentTab) ? currentTab : libraryTab)
+        )
+      } else {
+        params.delete("tab")
+      }
     } else {
       params.delete("settings")
       params.delete("tab")
@@ -189,6 +225,11 @@ export const ProfileSettings: FC<ProfileSettingsProps> = ({}) => {
     setSettingsSection(section)
     localStorage.setItem("matrixSettingsSection", section)
     updateSettingsQuery(section)
+  }
+
+  const selectLibraryTab = (tab: LibraryType) => {
+    setLibraryTab(tab)
+    updateSettingsQuery("library", tab)
   }
 
   const handleSettingsOpenChange = (open: boolean) => {
@@ -852,9 +893,10 @@ export const ProfileSettings: FC<ProfileSettingsProps> = ({}) => {
               )}
 
               {settingsSection === "library" && (
-                <p className="text-muted-foreground text-sm">
-                  Library management is being organized.
-                </p>
+                <SettingsLibrary
+                  tab={libraryTab}
+                  onTabChange={selectLibraryTab}
+                />
               )}
 
               {settingsSection === "appearance" && (
