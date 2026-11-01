@@ -33,33 +33,59 @@ export const Dashboard: FC<DashboardProps> = ({ children }) => {
   const touchStartY = useRef<number | null>(null)
 
   const handleTouchStart = (e: React.TouchEvent) => {
+    touchStartX.current = null
+    touchStartY.current = null
+    if (window.innerWidth >= 1024 || e.touches.length !== 1) return
+
+    const target = e.target
+    if (
+      target instanceof Element &&
+      target.closest(
+        "button, a, input, textarea, select, [contenteditable='true'], [data-no-sidebar-swipe]"
+      )
+    ) {
+      return
+    }
+
     touchStartX.current = e.touches[0].clientX
     touchStartY.current = e.touches[0].clientY
   }
 
   const handleTouchEnd = (e: React.TouchEvent) => {
     if (touchStartX.current === null || touchStartY.current === null) return
+    if (e.changedTouches.length !== 1) {
+      touchStartX.current = null
+      touchStartY.current = null
+      return
+    }
+
     const deltaX = e.changedTouches[0].clientX - touchStartX.current
     const deltaY = e.changedTouches[0].clientY - touchStartY.current
 
-    // Reveal on scroll/swipe right from left edge on mobile
+    // Open from anywhere on the app screen after a clear rightward swipe.
     if (
       !showSidebar &&
-      touchStartX.current < 65 &&
-      deltaX > 45 &&
+      window.innerWidth < 1024 &&
+      deltaX > 55 &&
       Math.abs(deltaX) > Math.abs(deltaY)
     ) {
       setSidebarVisible(true)
     }
-    // Close on swipe left when sidebar is open on mobile
+    // Close the mobile sidebar with a leftward swipe.
     else if (
       showSidebar &&
+      window.innerWidth < 1024 &&
       deltaX < -50 &&
       Math.abs(deltaX) > Math.abs(deltaY)
     ) {
       setSidebarVisible(false)
     }
 
+    touchStartX.current = null
+    touchStartY.current = null
+  }
+
+  const handleTouchCancel = () => {
     touchStartX.current = null
     touchStartY.current = null
   }
@@ -95,6 +121,7 @@ export const Dashboard: FC<DashboardProps> = ({ children }) => {
       className="flex size-full overflow-hidden bg-slate-50 text-slate-900 transition-colors dark:bg-[#070a13] dark:text-slate-100"
       onTouchStart={handleTouchStart}
       onTouchEnd={handleTouchEnd}
+      onTouchCancel={handleTouchCancel}
     >
       <CommandK />
 
