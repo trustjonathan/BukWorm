@@ -426,7 +426,8 @@ export const handleCreateMessages = async (
   parentId?: string | null,
   persistedUserMessage?: Tables<"messages"> | null
 ) => {
-  const finalUserMessage: TablesInsert<"messages"> & {
+  const finalUserMessage: Omit<TablesInsert<"messages">, "id"> & {
+    id: string
     parent_id?: string | null
   } = {
     id: uuidv4(),
@@ -446,19 +447,20 @@ export const handleCreateMessages = async (
       ? [{ modelData, generatedText }]
       : assistantResponses
 
-  const finalAssistantMessages: TablesInsert<"messages">[] = responses.map(
-    (response, index) => ({
-      parent_id: persistedUserMessage?.id || finalUserMessage.id,
-      chat_id: currentChat.id,
-      assistant_id: selectedAssistant?.id || null,
-      user_id: profile.user_id,
-      content: response.generatedText,
-      model: response.modelData.modelId,
-      role: "assistant",
-      sequence_number: chatMessages.length + index + 1,
-      image_paths: []
-    })
-  )
+  const finalAssistantMessages: (Omit<TablesInsert<"messages">, "id"> & {
+    id: string
+  })[] = responses.map((response, index) => ({
+    id: uuidv4(),
+    parent_id: persistedUserMessage?.id || finalUserMessage.id,
+    chat_id: currentChat.id,
+    assistant_id: selectedAssistant?.id || null,
+    user_id: profile.user_id,
+    content: response.generatedText,
+    model: response.modelData.modelId,
+    role: "assistant",
+    sequence_number: chatMessages.length + index + 1,
+    image_paths: []
+  }))
 
   let finalChatMessages: ChatMessage[] = []
 
@@ -481,10 +483,27 @@ export const handleCreateMessages = async (
         ? finalAssistantMessages
         : [finalUserMessage, ...finalAssistantMessages]
     )
-    const userMessage = persistedUserMessage || createdMessages[0]
-    const assistantMessages = persistedUserMessage
-      ? createdMessages
-      : createdMessages.slice(1)
+    const createdMessagesById = new Map(
+      createdMessages.map(message => [message.id, message])
+    )
+    const userMessage =
+      persistedUserMessage || createdMessagesById.get(finalUserMessage.id)
+    if (!userMessage) {
+      throw new Error(
+        "The saved user message was not returned by the database."
+      )
+    }
+
+    const assistantMessages = finalAssistantMessages.map(message => {
+      const createdMessage = createdMessagesById.get(message.id)
+      if (!createdMessage) {
+        throw new Error(
+          "A saved assistant response was not returned by the database."
+        )
+      }
+
+      return createdMessage
+    })
 
     // Upload each image (stored in newMessageImages) for the user message to message_images bucket
     const uploadPromises = newMessageImages
