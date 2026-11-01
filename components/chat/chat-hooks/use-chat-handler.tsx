@@ -12,7 +12,7 @@ import { getAssistantFilesByAssistantId } from "@/db/assistant-files"
 import { getAssistantToolsByAssistantId } from "@/db/assistant-tools"
 import { updateChat } from "@/db/chats"
 import { getCollectionFilesByCollectionId } from "@/db/collection-files"
-import { deleteMessagesIncludingAndAfter } from "@/db/messages"
+import { createMessage, deleteMessagesIncludingAndAfter } from "@/db/messages"
 import { buildFinalMessages } from "@/lib/build-prompt"
 import { Tables } from "@/supabase/types"
 import { ChatMessage, ChatPayload, LLM, LLMID, ModelProvider } from "@/types"
@@ -80,7 +80,9 @@ export const useChatHandler = () => {
     models,
     isPromptPickerOpen,
     isFilePickerOpen,
-    isToolPickerOpen
+    isToolPickerOpen,
+    isTemporaryChat,
+    setIsTemporaryChat
   } = useContext(ChatbotUIContext)
 
   const chatInputRef = useRef<HTMLTextAreaElement>(null)
@@ -91,9 +93,10 @@ export const useChatHandler = () => {
     }
   }, [isPromptPickerOpen, isFilePickerOpen, isToolPickerOpen])
 
-  const handleNewChat = async () => {
+  const handleNewChat = async (keepTemporary = false) => {
     if (!selectedWorkspace) return
 
+    setIsTemporaryChat(keepTemporary)
     setUserInput("")
     setChatMessages([])
     setSelectedChat(null)
@@ -292,6 +295,7 @@ export const useChatHandler = () => {
         id: uuidv4(),
         image_paths: newMessageImages.map(image => image.base64),
         model: chatSettings.model,
+        parent_id: null,
         role: "user",
         sequence_number: history.length,
         updated_at: new Date().toISOString(),
@@ -310,6 +314,7 @@ export const useChatHandler = () => {
           id: uuidv4(),
           image_paths: [],
           model: modelData.modelId,
+          parent_id: null,
           role: "assistant",
           sequence_number: history.length + index + 1,
           updated_at: new Date().toISOString(),
@@ -501,10 +506,17 @@ export const useChatHandler = () => {
     }
 
     if (agentIds !== undefined) {
+      if (isTemporaryChat) {
+        toast.error(
+          "Multi-agent conversations are not available in Temporary Chat."
+        )
+        return
+      }
       return handleSendToNexusAgents(messageContent, chatMessages, agentIds)
     }
 
     const startingInput = messageContent
+    let persistedUserMessage: Tables<"messages"> | null = null
 
     try {
       setUserInput("")
@@ -540,6 +552,19 @@ export const useChatHandler = () => {
       )
 
       let currentChat = selectedChat ? { ...selectedChat } : null
+      if (!isRegeneration && !currentChat && !isTemporaryChat) {
+        currentChat = await handleCreateChat(
+          chatSettings!,
+          profile!,
+          selectedWorkspace!,
+          messageContent,
+          selectedAssistant,
+          newMessageFiles,
+          setSelectedChat,
+          setChats,
+          setChatFiles
+        )
+      }
 
       const b64Images = newMessageImages.map(image => image.base64)
       const { tempUserChatMessage, tempAssistantChatMessage } =
@@ -553,6 +578,28 @@ export const useChatHandler = () => {
           selectedAssistant,
           parentId
         )
+      if (!isRegeneration && currentChat && !isTemporaryChat) {
+        persistedUserMessage = await createMessage({
+          id: tempUserChatMessage.message.id,
+          chat_id: currentChat.id,
+          assistant_id: null,
+          content: messageContent,
+          image_paths: [],
+          model: chatSettings!.model,
+          parent_id: parentId ?? null,
+          role: "user",
+          sequence_number: chatMessages.length,
+          user_id: profile!.user_id
+        })
+
+        setChatMessages(messages =>
+          messages.map(message =>
+            message.message.id === tempUserChatMessage.message.id
+              ? { ...message, message: persistedUserMessage! }
+              : message
+          )
+        )
+      }
 
       let retrievedFileItems: Tables<"file_items">[] = []
 
@@ -660,6 +707,63 @@ export const useChatHandler = () => {
         }
       }
 
+      if (isTemporaryChat) {
+        const now = new Date().toISOString()
+        const temporaryUserMessage: ChatMessage["message"] = {
+          ...tempUserChatMessage.message,
+          chat_id: "",
+          created_at: tempUserChatMessage.message.created_at || now,
+          updated_at: now,
+          user_id: profile!.user_id
+        }
+        const temporaryAssistantMessage: ChatMessage["message"] = {
+          ...tempAssistantChatMessage.message,
+          chat_id: "",
+          content: generatedText,
+          created_at: now,
+          updated_at: now,
+          user_id: profile!.user_id,
+          parent_id: temporaryUserMessage.id
+        }
+
+        if (newMessageImages.length > 0) {
+          setChatImages(currentImages => [
+            ...currentImages.filter(
+              image => image.messageId !== temporaryUserMessage.id
+            ),
+            ...newMessageImages.map(image => ({
+              ...image,
+              messageId: temporaryUserMessage.id
+            }))
+          ])
+        }
+
+        setChatFileItems(currentItems => {
+          const newItems = retrievedFileItems.filter(
+            fileItem => !currentItems.some(item => item.id === fileItem.id)
+          )
+          return [...currentItems, ...newItems]
+        })
+        setChatMessages(currentMessages =>
+          currentMessages.map(message => {
+            if (message.message.id === temporaryUserMessage.id) {
+              return { ...message, message: temporaryUserMessage }
+            }
+            if (message.message.id === temporaryAssistantMessage.id) {
+              return {
+                ...message,
+                message: temporaryAssistantMessage,
+                fileItems: retrievedFileItems.map(fileItem => fileItem.id)
+              }
+            }
+            return message
+          })
+        )
+        setIsGenerating(false)
+        setFirstTokenReceived(false)
+        return
+      }
+
       if (!currentChat) {
         currentChat = await handleCreateChat(
           chatSettings!,
@@ -702,7 +806,8 @@ export const useChatHandler = () => {
         selectedAssistant,
         undefined, // assistantResponses
         undefined, // userModelId
-        parentId ?? null
+        parentId ?? null,
+        persistedUserMessage
       )
 
       setIsGenerating(false)
@@ -711,7 +816,11 @@ export const useChatHandler = () => {
       setIsGenerating(false)
       setFirstTokenReceived(false)
       setUserInput(startingInput)
-      setChatMessages(chatMessages)
+      setChatMessages(
+        persistedUserMessage
+          ? [...chatMessages, { message: persistedUserMessage, fileItems: [] }]
+          : chatMessages
+      )
       toast.error(
         error instanceof Error ? error.message : "Unable to send this message."
       )

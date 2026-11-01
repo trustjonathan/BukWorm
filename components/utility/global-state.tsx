@@ -6,6 +6,7 @@ import { ChatbotUIContext } from "@/context/context"
 import { getProfileByUserId } from "@/db/profile"
 import { getWorkspaceImageFromStorage } from "@/db/storage/workspace-images"
 import { getWorkspacesByUserId } from "@/db/workspaces"
+import { getWorkspaceRoles } from "@/db/workspace-collaboration"
 import { convertBlobToBase64 } from "@/lib/blob-to-b64"
 import { DEFAULT_GOOGLE_MODEL_ID } from "@/lib/models/llm/google-llm-list"
 import { NexusAgentId } from "@/lib/chat-agents"
@@ -40,6 +41,9 @@ export const GlobalState: FC<GlobalStateProps> = ({ children }) => {
   const [assistants, setAssistants] = useState<Tables<"assistants">[]>([])
   const [collections, setCollections] = useState<Tables<"collections">[]>([])
   const [chats, setChats] = useState<Tables<"chats">[]>([])
+  const [chatPreferences, setChatPreferences] = useState<
+    Tables<"chat_user_preferences">[]
+  >([])
   const [files, setFiles] = useState<Tables<"files">[]>([])
   const [folders, setFolders] = useState<Tables<"folders">[]>([])
   const [models, setModels] = useState<Tables<"models">[]>([])
@@ -47,6 +51,12 @@ export const GlobalState: FC<GlobalStateProps> = ({ children }) => {
   const [prompts, setPrompts] = useState<Tables<"prompts">[]>([])
   const [tools, setTools] = useState<Tables<"tools">[]>([])
   const [workspaces, setWorkspaces] = useState<Tables<"workspaces">[]>([])
+  const [workspacePreferences, setWorkspacePreferences] = useState<
+    Tables<"workspace_user_preferences">[]
+  >([])
+  const [workspaceRoles, setWorkspaceRoles] = useState<
+    Record<string, "owner" | "admin" | "editor" | "viewer">
+  >({})
 
   // MODELS STORE
   const [envKeyMap, setEnvKeyMap] = useState<Record<string, VALID_ENV_KEYS>>({})
@@ -91,6 +101,7 @@ export const GlobalState: FC<GlobalStateProps> = ({ children }) => {
   const [streamingSpeed, setStreamingSpeed] = useState<
     "instant" | "natural" | "relaxed"
   >("natural")
+  const [isTemporaryChat, setIsTemporaryChat] = useState(false)
 
   // ACTIVE CHAT STORE
   const [isGenerating, setIsGenerating] = useState<boolean>(false)
@@ -190,6 +201,7 @@ export const GlobalState: FC<GlobalStateProps> = ({ children }) => {
 
       const workspaces = await getWorkspacesByUserId(user.id)
       setWorkspaces(workspaces)
+      setWorkspaceRoles(await getWorkspaceRoles(workspaces, user.id))
 
       for (const workspace of workspaces) {
         let workspaceImageUrl = ""
@@ -225,6 +237,8 @@ export const GlobalState: FC<GlobalStateProps> = ({ children }) => {
       value={{
         streamingSpeed,
         setStreamingSpeed,
+        isTemporaryChat,
+        setIsTemporaryChat,
 
         // PROFILE STORE
         profile,
@@ -237,6 +251,8 @@ export const GlobalState: FC<GlobalStateProps> = ({ children }) => {
         setCollections,
         chats,
         setChats,
+        chatPreferences,
+        setChatPreferences,
         files,
         setFiles,
         folders,
@@ -251,6 +267,10 @@ export const GlobalState: FC<GlobalStateProps> = ({ children }) => {
         setTools,
         workspaces,
         setWorkspaces,
+        workspacePreferences,
+        setWorkspacePreferences,
+        workspaceRoles,
+        setWorkspaceRoles,
 
         // MODELS STORE
         envKeyMap,

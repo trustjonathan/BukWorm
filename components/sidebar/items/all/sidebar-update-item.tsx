@@ -68,6 +68,7 @@ import {
   updatePrompt
 } from "@/db/prompts"
 import {
+  deleteAssistantImage,
   getAssistantImageFromStorage,
   uploadAssistantImage
 } from "@/db/storage/assistant-images"
@@ -505,11 +506,24 @@ export const SidebarUpdateItem: FC<SidebarUpdateItemProps> = ({
       let updatedAssistant = await updateAssistant(assistantId, rest)
 
       if (image) {
+        const previousImagePath = updatedAssistant.image_path
         const filePath = await uploadAssistantImage(updatedAssistant, image)
 
         updatedAssistant = await updateAssistant(assistantId, {
           image_path: filePath
         })
+
+        if (previousImagePath && previousImagePath !== filePath) {
+          try {
+            await deleteAssistantImage(previousImagePath)
+          } catch (error) {
+            toast.error(
+              error instanceof Error
+                ? `Assistant saved, but the previous image could not be removed: ${error.message}`
+                : "Assistant saved, but the previous image could not be removed."
+            )
+          }
+        }
 
         const url = (await getAssistantImageFromStorage(filePath)) || ""
 

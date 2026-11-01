@@ -17,8 +17,15 @@ export const metadata: Metadata = {
 export default async function Login({
   searchParams
 }: {
-  searchParams: { message: string }
+  searchParams: { message?: string; next?: string }
 }) {
+  const requestedNext = searchParams.next
+  const nextPath =
+    requestedNext?.startsWith("/") &&
+    !requestedNext.startsWith("//") &&
+    !requestedNext.includes("\\")
+      ? requestedNext
+      : null
   const cookieStore = cookies()
   const supabase = createServerClient<Database>(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -34,6 +41,10 @@ export default async function Login({
   const session = (await supabase.auth.getSession()).data.session
 
   if (session) {
+    if (nextPath) {
+      return redirect(nextPath)
+    }
+
     const { data: homeWorkspace, error } = await supabase
       .from("workspaces")
       .select("*")
@@ -62,7 +73,14 @@ export default async function Login({
     })
 
     if (error) {
-      return redirect(`/login?message=${error.message}`)
+      const nextQuery = nextPath ? `&next=${encodeURIComponent(nextPath)}` : ""
+      return redirect(
+        `/login?message=${encodeURIComponent(error.message)}${nextQuery}`
+      )
+    }
+
+    if (nextPath) {
+      return redirect(nextPath)
     }
 
     const { data: homeWorkspace, error: homeWorkspaceError } = await supabase
@@ -136,7 +154,9 @@ export default async function Login({
       return redirect(`/login?message=${error.message}`)
     }
 
-    return redirect("/setup")
+    return redirect(
+      nextPath ? `/setup?next=${encodeURIComponent(nextPath)}` : "/setup"
+    )
 
     // USE IF YOU WANT TO SEND EMAIL VERIFICATION, ALSO CHANGE TOML FILE
     // return redirect("/login?message=Check email to continue sign in process")

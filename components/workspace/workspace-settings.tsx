@@ -6,6 +6,7 @@ import {
   uploadWorkspaceImage
 } from "@/db/storage/workspace-images"
 import { updateWorkspace } from "@/db/workspaces"
+import { getWorkspaceRole, WorkspaceRole } from "@/db/workspace-collaboration"
 import { convertBlobToBase64 } from "@/lib/blob-to-b64"
 import { ChatSettings, LLMID } from "@/types"
 import { Tables } from "@/supabase/types"
@@ -29,6 +30,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../ui/tabs"
 import { TextareaAutosize } from "../ui/textarea-autosize"
 import { DeleteWorkspace } from "./delete-workspace"
+import { WorkspaceCollaborationSettings } from "./workspace-collaboration-settings"
 
 interface WorkspaceSettingsProps {
   embedded?: boolean
@@ -62,6 +64,13 @@ export const WorkspaceSettings: FC<WorkspaceSettingsProps> = ({
   const [instructions, setInstructions] = useState(
     selectedWorkspace?.instructions || ""
   )
+  const [sharing, setSharing] = useState<"private" | "shared">(
+    selectedWorkspace?.sharing === "shared" ? "shared" : "private"
+  )
+  const [workspaceRole, setWorkspaceRole] = useState<WorkspaceRole | null>(null)
+  const isOwner = profile?.user_id === selectedWorkspace?.user_id
+  const canManageWorkspace =
+    workspaceRole === "owner" || workspaceRole === "admin"
 
   const [defaultChatSettings, setDefaultChatSettings] = useState<ChatSettings>({
     model: (selectedWorkspace?.default_model ||
@@ -82,6 +91,7 @@ export const WorkspaceSettings: FC<WorkspaceSettingsProps> = ({
     setName(selectedWorkspace?.name || "")
     setDescription(selectedWorkspace?.description || "")
     setInstructions(selectedWorkspace?.instructions || "")
+    setSharing(selectedWorkspace?.sharing === "shared" ? "shared" : "private")
     setSelectedImage(null)
 
     setDefaultChatSettings({
@@ -101,6 +111,31 @@ export const WorkspaceSettings: FC<WorkspaceSettingsProps> = ({
   }, [selectedWorkspace])
 
   useEffect(() => {
+    let active = true
+    if (!selectedWorkspace || !profile) {
+      setWorkspaceRole(null)
+      return
+    }
+
+    getWorkspaceRole(selectedWorkspace.id)
+      .then(role => {
+        if (active) setWorkspaceRole(role)
+      })
+      .catch(error => {
+        if (!active) return
+        toast.error(
+          error instanceof Error
+            ? error.message
+            : "Could not load workspace role."
+        )
+      })
+
+    return () => {
+      active = false
+    }
+  }, [selectedWorkspace?.id, profile?.user_id])
+
+  useEffect(() => {
     const workspaceImage =
       workspaceImages.find(
         image => image.path === selectedWorkspace?.image_path
@@ -111,6 +146,10 @@ export const WorkspaceSettings: FC<WorkspaceSettingsProps> = ({
 
   const handleSave = async () => {
     if (!selectedWorkspace) return
+    if (!canManageWorkspace) {
+      toast.error("Only workspace owners and admins can update settings.")
+      return
+    }
 
     try {
       const previousImagePath = selectedWorkspace.image_path
@@ -123,6 +162,7 @@ export const WorkspaceSettings: FC<WorkspaceSettingsProps> = ({
         updatedWorkspace = await updateWorkspace(selectedWorkspace.id, {
           ...selectedWorkspace,
           name,
+          sharing,
           description,
           image_path: imagePath,
           instructions,
@@ -237,9 +277,10 @@ export const WorkspaceSettings: FC<WorkspaceSettingsProps> = ({
         </SheetHeader>
 
         <Tabs defaultValue="main">
-          <TabsList className="mt-4 grid w-full grid-cols-2">
+          <TabsList className="mt-4 grid w-full grid-cols-3">
             <TabsTrigger value="main">Main</TabsTrigger>
             <TabsTrigger value="defaults">Defaults</TabsTrigger>
+            <TabsTrigger value="access">Access</TabsTrigger>
           </TabsList>
 
           <TabsContent className="mt-4 space-y-4" value="main">
@@ -299,12 +340,40 @@ export const WorkspaceSettings: FC<WorkspaceSettingsProps> = ({
               onChangeChatSettings={setDefaultChatSettings}
             />
           </TabsContent>
+
+          <TabsContent className="mt-5 space-y-5" value="access">
+            {!selectedWorkspace.is_home && (
+              <div className="space-y-2">
+                <Label htmlFor="workspace-visibility">
+                  Workspace visibility
+                </Label>
+                <select
+                  id="workspace-visibility"
+                  className="border-input bg-background focus-visible:ring-ring h-10 w-full rounded-md border px-3 focus-visible:outline-none focus-visible:ring-2"
+                  disabled={!isOwner}
+                  value={sharing}
+                  onChange={event =>
+                    setSharing(event.target.value as "private" | "shared")
+                  }
+                >
+                  <option value="private">Private</option>
+                  <option value="shared">Shared</option>
+                </select>
+                <p className="text-muted-foreground text-xs">
+                  Making a workspace private removes its members and revokes
+                  pending invitations.
+                </p>
+              </div>
+            )}
+
+            <WorkspaceCollaborationSettings workspace={selectedWorkspace} />
+          </TabsContent>
         </Tabs>
       </div>
 
       <div className="mt-6 flex justify-between">
         <div>
-          {!selectedWorkspace.is_home && (
+          {!selectedWorkspace.is_home && isOwner && (
             <DeleteWorkspace
               workspace={selectedWorkspace}
               onDelete={() => (embedded ? onClose?.() : setIsOpen(false))}
@@ -320,7 +389,11 @@ export const WorkspaceSettings: FC<WorkspaceSettingsProps> = ({
             Cancel
           </Button>
 
-          <Button ref={buttonRef} onClick={handleSave}>
+          <Button
+            ref={buttonRef}
+            disabled={!canManageWorkspace}
+            onClick={handleSave}
+          >
             Save
           </Button>
         </div>

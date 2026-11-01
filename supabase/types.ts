@@ -825,6 +825,7 @@ export type Database = {
           id: string
           image_paths: string[]
           model: string
+          parent_id: string | null
           role: string
           sequence_number: number
           updated_at: string | null
@@ -838,6 +839,7 @@ export type Database = {
           id?: string
           image_paths: string[]
           model: string
+          parent_id?: string | null
           role: string
           sequence_number: number
           updated_at?: string | null
@@ -851,6 +853,7 @@ export type Database = {
           id?: string
           image_paths?: string[]
           model?: string
+          parent_id?: string | null
           role?: string
           sequence_number?: number
           updated_at?: string | null
@@ -1393,6 +1396,117 @@ export type Database = {
           },
         ]
       }
+      workspace_members: {
+        Row: {
+          created_at: string
+          invited_by: string | null
+          role: string
+          user_id: string
+          workspace_id: string
+        }
+        Insert: {
+          created_at?: string
+          invited_by?: string | null
+          role: string
+          user_id: string
+          workspace_id: string
+        }
+        Update: {
+          created_at?: string
+          invited_by?: string | null
+          role?: string
+          user_id?: string
+          workspace_id?: string
+        }
+        Relationships: []
+      }
+      workspace_invites: {
+        Row: {
+          accepted_at: string | null
+          accepted_by: string | null
+          created_at: string
+          created_by: string | null
+          expires_at: string
+          id: string
+          revoked_at: string | null
+          role: string
+          token_hash: string
+          workspace_id: string
+        }
+        Insert: {
+          accepted_at?: string | null
+          accepted_by?: string | null
+          created_at?: string
+          created_by: string | null
+          expires_at?: string
+          id?: string
+          revoked_at?: string | null
+          role: string
+          token_hash: string
+          workspace_id: string
+        }
+        Update: {
+          accepted_at?: string | null
+          accepted_by?: string | null
+          created_at?: string
+          created_by?: string | null
+          expires_at?: string
+          id?: string
+          revoked_at?: string | null
+          role?: string
+          token_hash?: string
+          workspace_id?: string
+        }
+        Relationships: []
+      }
+      workspace_user_preferences: {
+        Row: {
+          archived_at: string | null
+          is_starred: boolean
+          updated_at: string
+          user_id: string
+          workspace_id: string
+        }
+        Insert: {
+          archived_at?: string | null
+          is_starred?: boolean
+          updated_at?: string
+          user_id: string
+          workspace_id: string
+        }
+        Update: {
+          archived_at?: string | null
+          is_starred?: boolean
+          updated_at?: string
+          user_id?: string
+          workspace_id?: string
+        }
+        Relationships: []
+      }
+      chat_user_preferences: {
+        Row: {
+          archived_at: string | null
+          chat_id: string
+          is_starred: boolean
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          archived_at?: string | null
+          chat_id: string
+          is_starred?: boolean
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          archived_at?: string | null
+          chat_id?: string
+          is_starred?: boolean
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       workspaces: {
         Row: {
           created_at: string
@@ -1466,6 +1580,76 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      accept_workspace_invite: {
+        Args: {
+          p_token_hash: string
+        }
+        Returns: string
+      }
+      create_workspace_invite: {
+        Args: {
+          p_workspace_id: string
+          p_role: string
+          p_token_hash: string
+        }
+        Returns: {
+          accepted_at: string | null
+          accepted_by: string | null
+          created_at: string
+          created_by: string | null
+          expires_at: string
+          id: string
+          revoked_at: string | null
+          role: string
+          token_hash: string
+          workspace_id: string
+        }
+      }
+      leave_workspace: {
+        Args: {
+          p_workspace_id: string
+        }
+        Returns: undefined
+      }
+      get_workspace_member_profiles: {
+        Args: {
+          p_workspace_id: string
+        }
+        Returns: {
+          display_name: string
+          image_url: string | null
+          member_user_id: string
+          role: string
+          username: string | null
+        }[]
+      }
+      remove_workspace_member: {
+        Args: {
+          p_workspace_id: string
+          p_user_id: string
+        }
+        Returns: undefined
+      }
+      revoke_workspace_invite: {
+        Args: {
+          p_invite_id: string
+        }
+        Returns: undefined
+      }
+      set_workspace_member_role: {
+        Args: {
+          p_workspace_id: string
+          p_user_id: string
+          p_role: string
+        }
+        Returns: undefined
+      }
+      workspace_role: {
+        Args: {
+          p_workspace_id: string
+        }
+        Returns: string | null
+      }
       create_duplicate_messages_for_new_chat: {
         Args: {
           old_chat_id: string

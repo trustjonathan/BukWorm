@@ -13,7 +13,15 @@ export const uploadWorkspaceImage = async (
     throw new Error(`Image must be less than ${imageSizeLimit / 1000000}MB`)
   }
 
-  const filePath = `${workspace.user_id}/${workspace.id}/${Date.now()}`
+  const { data, error: userError } = await supabase.auth.getUser()
+  if (userError) {
+    throw new Error(userError.message)
+  }
+  if (!data.user) {
+    throw new Error("You must be signed in to upload a workspace image.")
+  }
+
+  const filePath = `${data.user.id}/${workspace.id}/${Date.now()}`
 
   const { error } = await supabase.storage
     .from(bucket)

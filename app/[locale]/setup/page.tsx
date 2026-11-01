@@ -33,6 +33,7 @@ export default function SetupPage() {
   const router = useRouter()
 
   const [loading, setLoading] = useState(true)
+  const [nextPath, setNextPath] = useState<string | null>(null)
 
   const [currentStep, setCurrentStep] = useState(1)
 
@@ -43,10 +44,24 @@ export default function SetupPage() {
 
   useEffect(() => {
     ;(async () => {
+      const requestedNext = new URLSearchParams(window.location.search).get(
+        "next"
+      )
+      const returnPath =
+        requestedNext?.startsWith("/") &&
+        !requestedNext.startsWith("//") &&
+        !requestedNext.includes("\\")
+          ? requestedNext
+          : null
+      setNextPath(returnPath)
+
       const session = (await supabase.auth.getSession()).data.session
 
       if (!session) {
-        return router.push("/login")
+        const nextQuery = returnPath
+          ? `?next=${encodeURIComponent(returnPath)}`
+          : ""
+        return router.push(`/login${nextQuery}`)
       } else {
         const user = session.user
 
@@ -67,7 +82,7 @@ export default function SetupPage() {
           const homeWorkspaceId = await getHomeWorkspaceByUserId(
             session.user.id
           )
-          return router.push(`/${homeWorkspaceId}/chat`)
+          return router.push(returnPath || `/${homeWorkspaceId}/chat`)
         }
       }
     })()
@@ -124,7 +139,7 @@ export default function SetupPage() {
       )
     )
 
-    return router.push(`/${updatedHomeWorkspace.id}/chat`)
+    return router.push(nextPath || `/${updatedHomeWorkspace.id}/chat`)
   }
 
   const renderStep = (stepNum: number) => {

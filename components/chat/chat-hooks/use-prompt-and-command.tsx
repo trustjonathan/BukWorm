@@ -6,6 +6,7 @@ import { getCollectionFilesByCollectionId } from "@/db/collection-files"
 import { Tables } from "@/supabase/types"
 import { LLMID } from "@/types"
 import { useContext } from "react"
+import { toast } from "sonner"
 
 export const usePromptAndCommand = () => {
   const {
@@ -26,7 +27,8 @@ export const usePromptAndCommand = () => {
     setIsAssistantPickerOpen,
     setSelectedAssistant,
     setChatSettings,
-    setChatFiles
+    setChatFiles,
+    isTemporaryChat
   } = useContext(ChatbotUIContext)
 
   const handleInputChange = (value: string) => {
@@ -45,9 +47,12 @@ export const usePromptAndCommand = () => {
     } else if (slashMatch) {
       setIsPromptPickerOpen(true)
       setSlashCommand(slashMatch[1])
-    } else if (hashtagMatch) {
+    } else if (hashtagMatch && !isTemporaryChat) {
       setIsFilePickerOpen(true)
       setHashtagCommand(hashtagMatch[1])
+    } else if (hashtagMatch && isTemporaryChat) {
+      setIsFilePickerOpen(false)
+      setHashtagCommand("")
     } else if (toolMatch) {
       setIsToolPickerOpen(true)
       setToolCommand(toolMatch[1])
@@ -71,6 +76,11 @@ export const usePromptAndCommand = () => {
   }
 
   const handleSelectUserFile = async (file: Tables<"files">) => {
+    if (isTemporaryChat) {
+      toast.error("Attachments are disabled in Temporary Chat.")
+      return
+    }
+
     setShowFilesDisplay(true)
     setIsFilePickerOpen(false)
     setUseRetrieval(true)
@@ -100,6 +110,11 @@ export const usePromptAndCommand = () => {
   const handleSelectUserCollection = async (
     collection: Tables<"collections">
   ) => {
+    if (isTemporaryChat) {
+      toast.error("Attachments are disabled in Temporary Chat.")
+      return
+    }
+
     setShowFilesDisplay(true)
     setIsFilePickerOpen(false)
     setUseRetrieval(true)
