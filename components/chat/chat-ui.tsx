@@ -21,14 +21,10 @@ import Image from "next/image"
 import { useParams } from "next/navigation"
 import { FC, useContext, useEffect, useState } from "react"
 import { Button } from "../ui/button"
-import { ChatHelp } from "./chat-help"
 import { useScroll } from "./chat-hooks/use-scroll"
 import { ChatInput } from "./chat-input"
 import { ChatMessages } from "./chat-messages"
-import { ChatSettings } from "./chat-settings"
 import { ChatScrollButtons } from "./chat-scroll-buttons"
-import { ChatSecondaryButtons } from "./chat-secondary-buttons"
-import { QuickSettings } from "./quick-settings"
 
 interface ChatUIProps {}
 
@@ -235,13 +231,6 @@ export const ChatUI: FC<ChatUIProps> = ({}) => {
                 Matrix-powered · Streaming responses
               </div>
             </div>
-          </div>
-
-          <div className="flex shrink-0 items-center gap-1 sm:gap-2">
-            <QuickSettings />
-            <ChatSettings />
-            <ChatSecondaryButtons />
-            <ChatHelp />
           </div>
         </header>
 

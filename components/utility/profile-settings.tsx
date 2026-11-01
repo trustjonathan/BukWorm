@@ -31,6 +31,7 @@ import Image from "next/image"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import { useTheme } from "next-themes"
 import { FC, useCallback, useContext, useEffect, useRef, useState } from "react"
+import useHotkey from "@/lib/hooks/use-hotkey"
 import { toast } from "sonner"
 import { Button } from "../ui/button"
 import {
@@ -55,8 +56,13 @@ import { WithTooltip } from "../ui/with-tooltip"
 import { ThemeSwitcher } from "./theme-switcher"
 import { WorkspaceSettings } from "../workspace/workspace-settings"
 import { SettingsLibrary } from "./settings-library"
+import { ChatSettings } from "../chat/chat-settings"
+import { ChatSecondaryButtons } from "../chat/chat-secondary-buttons"
+import { QuickSettings } from "../chat/quick-settings"
+import { ChatHelp } from "../chat/chat-help"
 
 type SettingsSection =
+  | "chat"
   | "profile"
   | "workspace"
   | "library"
@@ -67,6 +73,7 @@ const isSettingsSection = (
   section: string | null
 ): section is SettingsSection =>
   section === "profile" ||
+  section === "chat" ||
   section === "workspace" ||
   section === "library" ||
   section === "appearance" ||
@@ -115,6 +122,9 @@ export const ProfileSettings: FC<ProfileSettingsProps> = ({}) => {
   const [settingsSection, setSettingsSection] =
     useState<SettingsSection>("profile")
   const [libraryTab, setLibraryTab] = useState<LibraryType>("prompts")
+  const [activeChatControl, setActiveChatControl] = useState<
+    "quick" | "model" | "help" | null
+  >(null)
 
   const [displayName, setDisplayName] = useState(profile?.display_name || "")
   const [username, setUsername] = useState(profile?.username || "")
@@ -242,6 +252,18 @@ export const ProfileSettings: FC<ProfileSettingsProps> = ({}) => {
     setIsOpen(open)
     updateSettingsQuery(open ? settingsSection : undefined)
   }
+
+  const openChatControl = (control: "quick" | "model" | "help") => {
+    setSettingsSection("chat")
+    localStorage.setItem("matrixSettingsSection", "chat")
+    setActiveChatControl(control)
+    setIsOpen(true)
+    updateSettingsQuery("chat")
+  }
+
+  useHotkey("p", () => openChatControl("quick"))
+  useHotkey("i", () => openChatControl("model"))
+  useHotkey("/", () => openChatControl("help"))
 
   const handleSignOut = async () => {
     await supabase.auth.signOut()
@@ -498,6 +520,7 @@ export const ProfileSettings: FC<ProfileSettingsProps> = ({}) => {
                 className="flex gap-1 overflow-x-auto sm:flex-1 sm:flex-col sm:overflow-visible"
               >
                 {[
+                  ["chat", "Chat"],
                   ["profile", "Profile"],
                   ["workspace", "Workspace"],
                   ["library", "Library"],
@@ -529,8 +552,10 @@ export const ProfileSettings: FC<ProfileSettingsProps> = ({}) => {
                 <h2 className="text-base font-semibold">
                   {settingsSection === "appearance"
                     ? "Appearance & data"
-                    : settingsSection.charAt(0).toUpperCase() +
-                      settingsSection.slice(1)}
+                    : settingsSection === "chat"
+                      ? "Chat controls"
+                      : settingsSection.charAt(0).toUpperCase() +
+                        settingsSection.slice(1)}
                 </h2>
                 <DialogClose asChild>
                   <Button
@@ -636,6 +661,59 @@ export const ProfileSettings: FC<ProfileSettingsProps> = ({}) => {
                         limit={PROFILE_CONTEXT_MAX}
                       />
                     </div>
+                  </div>
+                )}
+
+                {settingsSection === "chat" && (
+                  <div className="space-y-6">
+                    <section className="space-y-3">
+                      <div>
+                        <h3 className="text-sm font-semibold">Model</h3>
+                        <p className="text-muted-foreground text-sm">
+                          Choose the model and adjust settings for the current
+                          chat.
+                        </p>
+                      </div>
+                      <ChatSettings
+                        open={activeChatControl === "model"}
+                        onOpenChange={open =>
+                          setActiveChatControl(open ? "model" : null)
+                        }
+                      />
+                    </section>
+                    <section className="space-y-3">
+                      <div>
+                        <h3 className="text-sm font-semibold">
+                          Preset or assistant
+                        </h3>
+                        <p className="text-muted-foreground text-sm">
+                          Apply a saved preset or assistant to the current chat.
+                        </p>
+                      </div>
+                      <QuickSettings
+                        open={activeChatControl === "quick"}
+                        onOpenChange={open =>
+                          setActiveChatControl(open ? "quick" : null)
+                        }
+                      />
+                    </section>
+                    <section className="space-y-3">
+                      <div>
+                        <h3 className="text-sm font-semibold">Chat actions</h3>
+                        <p className="text-muted-foreground text-sm">
+                          View chat details, start a new chat, or open help.
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <ChatSecondaryButtons />
+                        <ChatHelp
+                          open={activeChatControl === "help"}
+                          onOpenChange={open =>
+                            setActiveChatControl(open ? "help" : null)
+                          }
+                        />
+                      </div>
+                    </section>
                   </div>
                 )}
 

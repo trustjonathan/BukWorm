@@ -1,26 +1,25 @@
 import { ChatbotUIContext } from "@/context/context"
 import { CHAT_SETTING_LIMITS } from "@/lib/chat-setting-limits"
-import useHotkey from "@/lib/hooks/use-hotkey"
 import { IconChevronDown } from "@tabler/icons-react"
-import { FC, useContext, useEffect, useRef } from "react"
+import { FC, useContext, useEffect, useState } from "react"
 import { Button } from "../ui/button"
 import { ChatSettingsForm } from "../ui/chat-settings-form"
 import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover"
 
-interface ChatSettingsProps {}
+interface ChatSettingsProps {
+  open?: boolean
+  onOpenChange?: (open: boolean) => void
+}
 
-export const ChatSettings: FC<ChatSettingsProps> = ({}) => {
-  useHotkey("i", () => handleClick())
-
+export const ChatSettings: FC<ChatSettingsProps> = ({ open, onOpenChange }) => {
   const { chatSettings, setChatSettings, availableHostedModels } =
     useContext(ChatbotUIContext)
 
-  const buttonRef = useRef<HTMLButtonElement>(null)
-
-  const handleClick = () => {
-    if (buttonRef.current) {
-      buttonRef.current.click()
-    }
+  const [internalOpen, setInternalOpen] = useState(false)
+  const isOpen = open ?? internalOpen
+  const changeOpen = (nextOpen: boolean) => {
+    setInternalOpen(nextOpen)
+    onOpenChange?.(nextOpen)
   }
 
   useEffect(() => {
@@ -46,10 +45,9 @@ export const ChatSettings: FC<ChatSettingsProps> = ({}) => {
   const fullModel = allModels.find(llm => llm.modelId === chatSettings.model)
 
   return (
-    <Popover>
+    <Popover open={isOpen} onOpenChange={changeOpen}>
       <PopoverTrigger asChild>
         <Button
-          ref={buttonRef}
           className="text-muted-foreground hover:text-foreground max-w-[240px] gap-1 px-2 text-sm sm:max-w-[320px]"
           variant="ghost"
           size="sm"

@@ -7,7 +7,7 @@ import {
 import { Announcement } from "@/types/announcement"
 import { IconExternalLink, IconSpeakerphone } from "@tabler/icons-react"
 import { FC, useEffect, useState } from "react"
-import { SIDEBAR_ICON_SIZE } from "../sidebar/sidebar-switcher"
+import { APP_ICON_SIZE } from "../ui/icon-sizes"
 
 interface AnnouncementsProps {}
 
@@ -81,7 +81,7 @@ export const Announcements: FC<AnnouncementsProps> = () => {
     <Popover>
       <PopoverTrigger asChild>
         <div className="relative cursor-pointer hover:opacity-50">
-          <IconSpeakerphone size={SIDEBAR_ICON_SIZE} />
+          <IconSpeakerphone size={APP_ICON_SIZE} />
           {unreadCount > 0 && (
             <div className="notification-indicator absolute right-[-4px] top-[-4px] flex size-4 items-center justify-center rounded-full bg-red-500 text-xs text-white">
               {unreadCount}

@@ -3,7 +3,6 @@ import { getAssistantCollectionsByAssistantId } from "@/db/assistant-collections
 import { getAssistantFilesByAssistantId } from "@/db/assistant-files"
 import { getAssistantToolsByAssistantId } from "@/db/assistant-tools"
 import { getCollectionFilesByCollectionId } from "@/db/collection-files"
-import useHotkey from "@/lib/hooks/use-hotkey"
 import { LLM_LIST } from "@/lib/models/llm/llm-list"
 import { DEFAULT_GOOGLE_MODEL_ID } from "@/lib/models/llm/google-llm-list"
 import { Tables } from "@/supabase/types"
@@ -25,12 +24,16 @@ import {
 import { Input } from "../ui/input"
 import { QuickSettingOption } from "./quick-setting-option"
 
-interface QuickSettingsProps {}
+interface QuickSettingsProps {
+  open?: boolean
+  onOpenChange?: (open: boolean) => void
+}
 
-export const QuickSettings: FC<QuickSettingsProps> = ({}) => {
+export const QuickSettings: FC<QuickSettingsProps> = ({
+  open,
+  onOpenChange
+}) => {
   const { t } = useTranslation()
-
-  useHotkey("p", () => setIsOpen(prevState => !prevState))
 
   const {
     presets,
@@ -52,7 +55,12 @@ export const QuickSettings: FC<QuickSettingsProps> = ({}) => {
 
   const inputRef = useRef<HTMLInputElement>(null)
 
-  const [isOpen, setIsOpen] = useState(false)
+  const [internalOpen, setInternalOpen] = useState(false)
+  const isOpen = open ?? internalOpen
+  const changeOpen = (nextOpen: boolean) => {
+    setInternalOpen(nextOpen)
+    onOpenChange?.(nextOpen)
+  }
   const [search, setSearch] = useState("")
   const [loading, setLoading] = useState(false)
 
@@ -192,7 +200,7 @@ export const QuickSettings: FC<QuickSettingsProps> = ({}) => {
     <DropdownMenu
       open={isOpen}
       onOpenChange={isOpen => {
-        setIsOpen(isOpen)
+        changeOpen(isOpen)
         setSearch("")
       }}
     >

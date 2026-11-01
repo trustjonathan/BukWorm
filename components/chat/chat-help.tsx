@@ -1,4 +1,3 @@
-import useHotkey from "@/lib/hooks/use-hotkey"
 import {
   IconBrandGithub,
   IconBrandX,
@@ -18,15 +17,21 @@ import {
 } from "../ui/dropdown-menu"
 import { Announcements } from "../utility/announcements"
 
-interface ChatHelpProps {}
+interface ChatHelpProps {
+  open?: boolean
+  onOpenChange?: (open: boolean) => void
+}
 
-export const ChatHelp: FC<ChatHelpProps> = ({}) => {
-  useHotkey("/", () => setIsOpen(prevState => !prevState))
-
-  const [isOpen, setIsOpen] = useState(false)
+export const ChatHelp: FC<ChatHelpProps> = ({ open, onOpenChange }) => {
+  const [internalOpen, setInternalOpen] = useState(false)
+  const isOpen = open ?? internalOpen
+  const changeOpen = (nextOpen: boolean) => {
+    setInternalOpen(nextOpen)
+    onOpenChange?.(nextOpen)
+  }
 
   return (
-    <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
+    <DropdownMenu open={isOpen} onOpenChange={changeOpen}>
       <DropdownMenuTrigger asChild>
         <Button
           variant="ghost"

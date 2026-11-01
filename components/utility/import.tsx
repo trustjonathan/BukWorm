@@ -9,7 +9,7 @@ import { createTools } from "@/db/tools"
 import { IconUpload, IconX } from "@tabler/icons-react"
 import { FC, useContext, useRef, useState } from "react"
 import { toast } from "sonner"
-import { SIDEBAR_ICON_SIZE } from "../sidebar/sidebar-switcher"
+import { APP_ICON_SIZE } from "../ui/icon-sizes"
 import { Badge } from "../ui/badge"
 import { Button } from "../ui/button"
 import {
@@ -214,7 +214,7 @@ export const Import: FC<ImportProps> = ({}) => {
     <>
       <IconUpload
         className="cursor-pointer hover:opacity-50"
-        size={SIDEBAR_ICON_SIZE}
+        size={APP_ICON_SIZE}
         onClick={() => setIsOpen(true)}
       />
 

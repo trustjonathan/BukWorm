@@ -1,8 +1,9 @@
 import { useChatHandler } from "@/components/chat/chat-hooks/use-chat-handler"
 import { ChatbotUIContext } from "@/context/context"
 import { IconInfoCircle, IconMessagePlus } from "@tabler/icons-react"
-import { FC, useContext } from "react"
-import { WithTooltip } from "../ui/with-tooltip"
+import { FC, useContext, useState } from "react"
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../ui/dialog"
+import { Button } from "../ui/button"
 
 interface ChatSecondaryButtonsProps {}
 
@@ -10,67 +11,61 @@ export const ChatSecondaryButtons: FC<ChatSecondaryButtonsProps> = ({}) => {
   const { selectedChat } = useContext(ChatbotUIContext)
 
   const { handleNewChat } = useChatHandler()
+  const [isInfoOpen, setIsInfoOpen] = useState(false)
 
   return (
     <>
       {selectedChat && (
         <>
-          <WithTooltip
-            delayDuration={200}
-            display={
-              <div>
-                <div className="text-lg font-bold">Chat Info</div>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            aria-label="Show chat information"
+            title="Chat information"
+            onClick={() => setIsInfoOpen(true)}
+          >
+            <IconInfoCircle size={20} />
+          </Button>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            aria-label="Start a new chat"
+            title="Start a new chat"
+            onClick={handleNewChat}
+          >
+            <IconMessagePlus size={20} />
+          </Button>
 
-                <div className="mx-auto mt-2 max-w-xs space-y-2 sm:max-w-sm md:max-w-md lg:max-w-lg">
-                  <div>Model: {selectedChat.model}</div>
-                  <div>Prompt: {selectedChat.prompt}</div>
-
-                  <div>Temperature: {selectedChat.temperature}</div>
-                  <div>Context Length: {selectedChat.context_length}</div>
-
-                  <div>
-                    Profile Context:{" "}
-                    {selectedChat.include_profile_context
-                      ? "Enabled"
-                      : "Disabled"}
-                  </div>
-                  <div>
-                    {" "}
-                    Workspace Instructions:{" "}
-                    {selectedChat.include_workspace_instructions
-                      ? "Enabled"
-                      : "Disabled"}
-                  </div>
-
-                  <div>
-                    Embeddings Provider: {selectedChat.embeddings_provider}
-                  </div>
+          <Dialog open={isInfoOpen} onOpenChange={setIsInfoOpen}>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Chat information</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-2 break-words text-sm">
+                <div>Model: {selectedChat.model}</div>
+                <div>Prompt: {selectedChat.prompt}</div>
+                <div>Temperature: {selectedChat.temperature}</div>
+                <div>Context Length: {selectedChat.context_length}</div>
+                <div>
+                  Profile Context:{" "}
+                  {selectedChat.include_profile_context
+                    ? "Enabled"
+                    : "Disabled"}
+                </div>
+                <div>
+                  Workspace Instructions:{" "}
+                  {selectedChat.include_workspace_instructions
+                    ? "Enabled"
+                    : "Disabled"}
+                </div>
+                <div>
+                  Embeddings Provider: {selectedChat.embeddings_provider}
                 </div>
               </div>
-            }
-            trigger={
-              <div className="mt-1">
-                <IconInfoCircle
-                  className="cursor-default hover:opacity-50"
-                  size={24}
-                />
-              </div>
-            }
-          />
-
-          <WithTooltip
-            delayDuration={200}
-            display={<div>Start a new chat</div>}
-            trigger={
-              <div className="mt-1">
-                <IconMessagePlus
-                  className="cursor-pointer hover:opacity-50"
-                  size={24}
-                  onClick={handleNewChat}
-                />
-              </div>
-            }
-          />
+            </DialogContent>
+          </Dialog>
         </>
       )}
     </>
