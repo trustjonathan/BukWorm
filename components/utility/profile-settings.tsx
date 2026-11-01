@@ -509,15 +509,15 @@ export const ProfileSettings: FC<ProfileSettingsProps> = ({}) => {
       </DropdownMenu>
 
       <Dialog open={isOpen} onOpenChange={handleSettingsOpenChange}>
-        <DialogContent className="h-dvh w-full max-w-none gap-0 overflow-hidden rounded-none p-0 sm:h-[min(800px,calc(100dvh-32px))] sm:max-w-[960px] sm:rounded-lg">
-          <div className="flex h-full min-h-0 flex-col sm:flex-row">
-            <aside className="border-border flex shrink-0 flex-col border-b p-4 sm:w-56 sm:border-b-0 sm:border-r">
-              <DialogHeader className="mb-3 text-left">
+        <DialogContent className="h-dvh max-h-dvh w-full max-w-none gap-0 overflow-hidden rounded-none p-0 sm:h-[min(800px,calc(100dvh-32px))] sm:max-h-[calc(100dvh-32px)] sm:max-w-[960px] sm:rounded-lg">
+          <div className="settings-dialog-layout flex size-full min-h-0 min-w-0 flex-col sm:flex-row">
+            <aside className="settings-dialog-sidebar border-border flex w-full min-w-0 shrink-0 flex-col border-b p-3 sm:w-56 sm:border-b-0 sm:border-r sm:p-4">
+              <DialogHeader className="mb-2 text-left sm:mb-3">
                 <DialogTitle>Settings</DialogTitle>
               </DialogHeader>
               <nav
                 aria-label="Settings sections"
-                className="flex gap-1 overflow-x-auto sm:flex-1 sm:flex-col sm:overflow-visible"
+                className="settings-dialog-nav flex w-full min-w-0 flex-nowrap gap-1 overflow-x-auto overscroll-x-contain pb-1 pr-1 [-webkit-overflow-scrolling:touch] [scrollbar-width:thin] sm:flex-1 sm:flex-col sm:overflow-visible sm:pb-0 sm:pr-0"
               >
                 {[
                   ["chat", "Chat"],
@@ -533,7 +533,7 @@ export const ProfileSettings: FC<ProfileSettingsProps> = ({}) => {
                     variant={
                       settingsSection === section ? "secondary" : "ghost"
                     }
-                    className="shrink-0 justify-start"
+                    className="min-h-9 shrink-0 justify-start whitespace-nowrap"
                     aria-current={
                       settingsSection === section ? "page" : undefined
                     }
@@ -568,7 +568,7 @@ export const ProfileSettings: FC<ProfileSettingsProps> = ({}) => {
                   </Button>
                 </DialogClose>
               </div>
-              <div className="min-h-0 flex-1 overflow-y-auto p-5">
+              <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden overscroll-y-contain p-4 sm:p-5">
                 {settingsSection === "profile" && (
                   <div className="space-y-4">
                     <div className="space-y-1">
