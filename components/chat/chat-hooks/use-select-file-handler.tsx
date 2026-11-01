@@ -26,8 +26,7 @@ export const useSelectFileHandler = () => {
     setNewMessageFiles,
     setShowFilesDisplay,
     setFiles,
-    setUseRetrieval,
-    isTemporaryChat
+    setUseRetrieval
   } = useContext(ChatbotUIContext)
 
   const [filesToAccept, setFilesToAccept] = useState(ACCEPTED_FILE_TYPES)
@@ -45,11 +44,6 @@ export const useSelectFileHandler = () => {
   }, [chatSettings?.model])
 
   const processFile = async (file: File, pendingId: string) => {
-    if (isTemporaryChat) {
-      toast.error("Attachments are disabled in Temporary Chat.")
-      return
-    }
-
     if (!profile || !selectedWorkspace || !chatSettings) {
       toast.error("Choose a workspace before attaching files.")
       return
@@ -199,10 +193,6 @@ export const useSelectFileHandler = () => {
   const handleSelectDeviceFiles = async (input: File[] | FileList) => {
     const selectedFiles = Array.from(input)
     if (selectedFiles.length === 0) return
-    if (isTemporaryChat) {
-      toast.error("Attachments are disabled in Temporary Chat.")
-      return
-    }
 
     if (!profile || !selectedWorkspace || !chatSettings) {
       toast.error("Choose a workspace before attaching files.")

@@ -33,7 +33,7 @@ export const ChatSecondaryButtons: FC<ChatSecondaryButtonsProps> = ({}) => {
             size="icon"
             aria-label="Start a new chat"
             title="Start a new chat"
-            onClick={() => void handleNewChat()}
+            onClick={handleNewChat}
           >
             <IconMessagePlus size={20} />
           </Button>

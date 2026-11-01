@@ -17,24 +17,14 @@ import { FC, useContext, useRef, useState } from "react"
 
 interface UpdateChatProps {
   chat: Tables<"chats">
-  open?: boolean
-  onOpenChange?: (open: boolean) => void
-  showTrigger?: boolean
 }
 
-export const UpdateChat: FC<UpdateChatProps> = ({
-  chat,
-  open,
-  onOpenChange,
-  showTrigger = true
-}) => {
+export const UpdateChat: FC<UpdateChatProps> = ({ chat }) => {
   const { setChats } = useContext(ChatbotUIContext)
 
   const buttonRef = useRef<HTMLButtonElement>(null)
 
-  const [internalOpen, setInternalOpen] = useState(false)
-  const showChatDialog = open ?? internalOpen
-  const setShowChatDialog = onOpenChange ?? setInternalOpen
+  const [showChatDialog, setShowChatDialog] = useState(false)
   const [name, setName] = useState(chat.name)
 
   const handleUpdateChat = async (e: React.MouseEvent<HTMLButtonElement>) => {
@@ -56,19 +46,17 @@ export const UpdateChat: FC<UpdateChatProps> = ({
 
   return (
     <Dialog open={showChatDialog} onOpenChange={setShowChatDialog}>
-      {showTrigger && (
-        <DialogTrigger asChild>
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            className="size-9"
-            aria-label={`Rename ${chat.name}`}
-          >
-            <IconEdit size={18} />
-          </Button>
-        </DialogTrigger>
-      )}
+      <DialogTrigger asChild>
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          className="size-9"
+          aria-label={`Rename ${chat.name}`}
+        >
+          <IconEdit size={18} />
+        </Button>
+      </DialogTrigger>
 
       <DialogContent onKeyDown={handleKeyDown}>
         <DialogHeader>

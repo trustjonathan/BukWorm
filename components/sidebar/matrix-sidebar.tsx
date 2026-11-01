@@ -1,21 +1,16 @@
 "use client"
 
 import { useChatHandler } from "@/components/chat/chat-hooks/use-chat-handler"
-import {
-  getChatPreferencesByUserId,
-  getWorkspacePreferencesByUserId
-} from "@/db/workspace-collaboration"
 import { ProfileSettings } from "@/components/utility/profile-settings"
 import { WorkspaceSwitcher } from "@/components/utility/workspace-switcher"
 import { ChatbotUIContext } from "@/context/context"
 import { IconLayoutSidebar, IconMessage, IconPlus } from "@tabler/icons-react"
 import Image from "next/image"
 import { useRouter } from "next/navigation"
-import { FC, useContext, useEffect, useState } from "react"
+import { FC, useContext, useState } from "react"
 import { Button } from "../ui/button"
 import { SidebarDataList } from "./sidebar-data-list"
 import { SidebarSearch } from "./sidebar-search"
-import { toast } from "sonner"
 
 interface MatrixSidebarProps {
   onClose?: () => void
@@ -25,75 +20,23 @@ const RECENT_CHAT_LIMIT = 10
 
 export const MatrixSidebar: FC<MatrixSidebarProps> = ({ onClose }) => {
   const router = useRouter()
-  const {
-    chats,
-    folders,
-    profile,
-    chatPreferences,
-    setChatPreferences,
-    setWorkspacePreferences,
-    selectedWorkspace,
-    setShowSidebar
-  } = useContext(ChatbotUIContext)
+  const { chats, folders, selectedWorkspace, setShowSidebar } =
+    useContext(ChatbotUIContext)
 
   const { handleNewChat } = useChatHandler()
   const [searchTerm, setSearchTerm] = useState("")
   const [showAllChats, setShowAllChats] = useState(false)
-  const [showArchivedChats, setShowArchivedChats] = useState(false)
-
-  useEffect(() => {
-    if (!profile) return
-    let active = true
-
-    Promise.all([
-      getChatPreferencesByUserId(profile.user_id),
-      getWorkspacePreferencesByUserId(profile.user_id)
-    ])
-      .then(([chatPrefs, workspacePrefs]) => {
-        if (!active) return
-        setChatPreferences(chatPrefs)
-        setWorkspacePreferences(workspacePrefs)
-      })
-      .catch(error => {
-        if (!active) return
-        toast.error(
-          error instanceof Error
-            ? error.message
-            : "Could not load workspace preferences."
-        )
-      })
-
-    return () => {
-      active = false
-    }
-  }, [profile?.user_id])
 
   const chatFolders = folders.filter(folder => folder.type === "chats")
   const normalizedSearch = searchTerm.trim().toLowerCase()
-  const visibleChats = chats.filter(chat => {
-    const archived = Boolean(
-      chatPreferences.find(preference => preference.chat_id === chat.id)
-        ?.archived_at
-    )
-    return archived === showArchivedChats
-  })
-  const matchingChats = visibleChats.filter(chat =>
+  const matchingChats = chats.filter(chat =>
     chat.name.toLowerCase().includes(normalizedSearch)
   )
-  const sortedChats = [...matchingChats].sort((first, second) => {
-    const firstStarred = chatPreferences.some(
-      preference => preference.chat_id === first.id && preference.is_starred
-    )
-    const secondStarred = chatPreferences.some(
-      preference => preference.chat_id === second.id && preference.is_starred
-    )
-
-    return (
-      Number(secondStarred) - Number(firstStarred) ||
+  const sortedChats = [...matchingChats].sort(
+    (first, second) =>
       new Date(second.updated_at || second.created_at).getTime() -
-        new Date(first.updated_at || first.created_at).getTime()
-    )
-  })
+      new Date(first.updated_at || first.created_at).getTime()
+  )
   const displayedChats =
     showAllChats || normalizedSearch
       ? sortedChats
@@ -204,33 +147,19 @@ export const MatrixSidebar: FC<MatrixSidebarProps> = ({ onClose }) => {
         <div className="flex shrink-0 items-center justify-between px-4 pb-1 pt-3">
           <h2 className="text-muted-foreground flex items-center gap-2 text-xs font-semibold uppercase tracking-wide">
             <IconMessage size={15} />
-            {showArchivedChats ? "Archived" : "Recents"}
+            Recents
           </h2>
-          <div className="flex items-center gap-2">
+          {!normalizedSearch && chats.length > RECENT_CHAT_LIMIT && (
             <Button
               type="button"
               variant="link"
               size="sm"
               className="h-8 px-1 text-xs"
-              onClick={() => {
-                setShowArchivedChats(value => !value)
-                setShowAllChats(false)
-              }}
+              onClick={() => setShowAllChats(value => !value)}
             >
-              {showArchivedChats ? "Active" : "Archived"}
+              {showAllChats ? "Show recent" : "View all"}
             </Button>
-            {!normalizedSearch && visibleChats.length > RECENT_CHAT_LIMIT && (
-              <Button
-                type="button"
-                variant="link"
-                size="sm"
-                className="h-8 px-1 text-xs"
-                onClick={() => setShowAllChats(value => !value)}
-              >
-                {showAllChats ? "Show recent" : "View all"}
-              </Button>
-            )}
-          </div>
+          )}
         </div>
         <div className="min-h-0 flex-1 overflow-y-auto px-2 pb-2">
           <SidebarDataList

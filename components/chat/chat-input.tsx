@@ -53,8 +53,7 @@ export const ChatInput: FC<ChatInputProps> = ({}) => {
     chatSettings,
     selectedTools,
     setSelectedTools,
-    assistantImages,
-    isTemporaryChat
+    assistantImages
   } = useContext(ChatbotUIContext)
 
   const {
@@ -217,42 +216,34 @@ export const ChatInput: FC<ChatInputProps> = ({}) => {
         </div>
 
         <>
-          {!isTemporaryChat && (
-            <button
-              type="button"
-              aria-label="Add attachments"
-              className="text-muted-foreground hover:bg-accent hover:text-accent-foreground focus-visible:ring-ring absolute bottom-3 left-3 flex size-9 items-center justify-center rounded-md focus-visible:outline-none focus-visible:ring-2"
-              onClick={() => fileInputRef.current?.click()}
-            >
-              <IconCirclePlus />
-            </button>
-          )}
+          <button
+            type="button"
+            aria-label="Add attachments"
+            className="text-muted-foreground hover:bg-accent hover:text-accent-foreground focus-visible:ring-ring absolute bottom-3 left-3 flex size-9 items-center justify-center rounded-md focus-visible:outline-none focus-visible:ring-2"
+            onClick={() => fileInputRef.current?.click()}
+          >
+            <IconCirclePlus />
+          </button>
 
           {/* Hidden input to select files from device */}
-          {!isTemporaryChat && (
-            <Input
-              ref={fileInputRef}
-              className="hidden"
-              type="file"
-              multiple
-              onChange={e => {
-                if (!e.target.files) return
-                void handleSelectDeviceFiles(e.target.files)
-                e.target.value = ""
-              }}
-              accept={filesToAccept}
-            />
-          )}
+          <Input
+            ref={fileInputRef}
+            className="hidden"
+            type="file"
+            multiple
+            onChange={e => {
+              if (!e.target.files) return
+              void handleSelectDeviceFiles(e.target.files)
+              e.target.value = ""
+            }}
+            accept={filesToAccept}
+          />
         </>
 
         <TextareaAutosize
           textareaRef={chatInputRef}
           className="ring-offset-background placeholder:text-muted-foreground flex w-full resize-none rounded-md border-none bg-transparent px-14 py-2 text-base focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50"
-          placeholder={
-            isTemporaryChat
-              ? "Temporary chat — messages are not saved"
-              : t("Ask Matrix anything... (starts a new thread)")
-          }
+          placeholder={t("Ask Matrix anything... (starts a new thread)")}
           onValueChange={handleInputChange}
           value={userInput}
           minRows={1}

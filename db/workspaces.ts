@@ -30,10 +30,11 @@ export const getWorkspaceById = async (workspaceId: string) => {
   return workspace
 }
 
-export const getWorkspacesByUserId = async (_userId: string) => {
+export const getWorkspacesByUserId = async (userId: string) => {
   const { data: workspaces, error } = await supabase
     .from("workspaces")
     .select("*")
+    .eq("user_id", userId)
     .order("created_at", { ascending: false })
 
   if (!workspaces) {
