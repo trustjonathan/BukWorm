@@ -190,12 +190,6 @@
   }
 }
 
-@keyframes matrix-mark-orbit {
-  to {
-    transform: rotate(360deg);
-  }
-}
-
 @keyframes matrix-text-reveal {
   from {
     opacity: 0.65;
@@ -207,16 +201,6 @@
 
 .animate-matrix-mark {
   animation: matrix-mark-breathe 1.6s ease-in-out infinite;
-}
-
-.matrix-mark-ring {
-  position: absolute;
-  inset: -2px;
-  border: 2px solid hsl(var(--ring) / 0.8);
-  border-top-color: hsl(var(--ring));
-  border-radius: 9999px;
-  animation: matrix-mark-orbit 2.4s linear infinite;
-  filter: drop-shadow(0 0 3px hsl(var(--ring) / 0.4));
 }
 
 .matrix-streaming-text {
@@ -238,10 +222,6 @@
 @media (prefers-reduced-motion: reduce) {
   .animate-matrix-mark {
     animation: matrix-mark-reduced-pulse 3.2s ease-in-out infinite;
-  }
-
-  .matrix-mark-ring {
-    animation: none;
   }
 
   .matrix-streaming-text {

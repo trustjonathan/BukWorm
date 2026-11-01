@@ -140,20 +140,20 @@ export const MatrixSidebar: FC<MatrixSidebarProps> = ({ onClose }) => {
           className="focus-visible:ring-ring flex items-center gap-2.5 rounded-md text-left transition-opacity hover:opacity-85 focus-visible:outline-none focus-visible:ring-2"
           onClick={handleNavigateHome}
         >
-          <div className="flex size-8 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-white p-1 shadow-sm dark:border-slate-700 dark:bg-slate-900">
+          <div className="flex size-8 shrink-0 items-center justify-center">
             <Image
-              src="/matrix-black.png"
+              src="/matrix-logo-light.png"
               alt="Matrix AI"
-              width={24}
-              height={24}
+              width={32}
+              height={32}
               className="block object-contain dark:hidden"
               priority
             />
             <Image
-              src="/matrix-white.png"
+              src="/matrix-logo-dark.png"
               alt="Matrix AI"
-              width={24}
-              height={24}
+              width={32}
+              height={32}
               className="hidden object-contain dark:block"
               priority
             />

@@ -520,20 +520,20 @@ export const ChatUI: FC<ChatUIProps> = ({}) => {
 
             {chatMessages.length === 0 && (
               <div className="pointer-events-none absolute inset-x-4 top-[24%] z-0 text-center">
-                <div className="border-border bg-card mx-auto mb-5 flex size-20 items-center justify-center rounded-2xl border p-3 shadow-md">
+                <div className="mx-auto mb-5 flex size-20 items-center justify-center">
                   <Image
-                    src="/matrix-black.png"
+                    src="/matrix-logo-light.png"
                     alt="Matrix AI"
-                    width={56}
-                    height={56}
+                    width={80}
+                    height={80}
                     className="block object-contain dark:hidden"
                     priority
                   />
                   <Image
-                    src="/matrix-white.png"
+                    src="/matrix-logo-dark.png"
                     alt="Matrix AI"
-                    width={56}
-                    height={56}
+                    width={80}
+                    height={80}
                     className="hidden object-contain dark:block"
                     priority
                   />

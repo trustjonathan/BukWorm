@@ -11,20 +11,20 @@ export default function HomePage() {
       <div className="pointer-events-none absolute -bottom-48 -right-36 size-[32rem] rounded-full bg-indigo-300/15 blur-3xl dark:bg-indigo-500/10" />
 
       <div className="relative flex max-w-2xl flex-col items-center text-center">
-        <div className="border-border bg-card mb-6 flex size-20 items-center justify-center rounded-2xl border p-3 shadow-md">
+        <div className="mb-6 flex size-20 items-center justify-center">
           <Image
-            src="/matrix-black.png"
+            src="/matrix-logo-light.png"
             alt="Matrix AI"
-            width={72}
-            height={72}
+            width={80}
+            height={80}
             className="block object-contain dark:hidden"
             priority
           />
           <Image
-            src="/matrix-white.png"
+            src="/matrix-logo-dark.png"
             alt="Matrix AI"
-            width={72}
-            height={72}
+            width={80}
+            height={80}
             className="hidden object-contain dark:block"
             priority
           />

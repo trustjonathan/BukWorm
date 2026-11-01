@@ -407,31 +407,30 @@ const GenerationMark: FC<{
 }> = ({ isActive, mode }) => (
   <span
     className={cn(
-      "bg-background text-foreground ring-ring/50 duration-250 relative inline-flex shrink-0 items-center justify-center rounded-full align-middle shadow-sm ring-2 transition-[opacity,transform]",
-      mode === "thinking" ? "size-9" : "size-7",
+      "duration-250 relative inline-flex shrink-0 items-center justify-center align-middle transition-[opacity,transform]",
+      mode === "thinking" ? "size-6" : "size-5",
       isActive ? "animate-matrix-mark opacity-100" : "scale-75 opacity-0"
     )}
     aria-hidden="true"
   >
-    <span className="matrix-mark-ring" />
     <Image
-      src="/matrix-black.png"
+      src="/matrix-logo-light.png"
       alt=""
-      width={mode === "thinking" ? 30 : 24}
-      height={mode === "thinking" ? 30 : 24}
+      width={mode === "thinking" ? 24 : 20}
+      height={mode === "thinking" ? 24 : 20}
       className={cn(
         "relative z-[1] object-contain dark:hidden",
-        mode === "thinking" ? "size-[30px]" : "size-6"
+        mode === "thinking" ? "size-6" : "size-5"
       )}
     />
     <Image
-      src="/matrix-white.png"
+      src="/matrix-logo-dark.png"
       alt=""
-      width={mode === "thinking" ? 30 : 24}
-      height={mode === "thinking" ? 30 : 24}
+      width={mode === "thinking" ? 24 : 20}
+      height={mode === "thinking" ? 24 : 20}
       className={cn(
         "relative z-[1] hidden object-contain dark:block",
-        mode === "thinking" ? "size-[30px]" : "size-6"
+        mode === "thinking" ? "size-6" : "size-5"
       )}
     />
   </span>

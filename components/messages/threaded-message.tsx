@@ -266,18 +266,18 @@ export const ThreadedMessage: FC<ThreadedMessageProps> = ({
               ) : (
                 <div className="size-[22px] shrink-0">
                   <Image
-                    src="/matrix-black.png"
+                    src="/matrix-logo-light.png"
                     alt="Matrix AI"
                     height={22}
                     width={22}
-                    className="block size-[22px] rounded-full object-contain p-0.5 dark:hidden"
+                    className="block size-[22px] object-contain dark:hidden"
                   />
                   <Image
-                    src="/matrix-white.png"
+                    src="/matrix-logo-dark.png"
                     alt="Matrix AI"
                     height={22}
                     width={22}
-                    className="hidden size-[22px] rounded-full object-contain p-0.5 dark:block"
+                    className="hidden size-[22px] object-contain dark:block"
                   />
                 </div>
               )

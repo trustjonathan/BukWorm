@@ -80,21 +80,15 @@ export const ModelIcon: FC<ModelIconProps> = ({
       return (
         <div className="relative inline-flex items-center justify-center">
           <Image
-            className={cn(
-              "block rounded-full bg-white object-contain p-0.5 dark:hidden",
-              props.className
-            )}
-            src="/matrix-black.png"
+            className={cn("block object-contain dark:hidden", props.className)}
+            src="/matrix-logo-light.png"
             alt="Matrix AI"
             width={width}
             height={height}
           />
           <Image
-            className={cn(
-              "hidden rounded-full bg-slate-900 object-contain p-0.5 dark:block",
-              props.className
-            )}
-            src="/matrix-white.png"
+            className={cn("hidden object-contain dark:block", props.className)}
+            src="/matrix-logo-dark.png"
             alt="Matrix AI"
             width={width}
             height={height}
