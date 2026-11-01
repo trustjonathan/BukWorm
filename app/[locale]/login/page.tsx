@@ -169,7 +169,7 @@ export default async function Login({
       >
         <Brand />
 
-        <Label className="text-md mt-4" htmlFor="email">
+        <Label className="mt-4 text-base" htmlFor="email">
           Email
         </Label>
         <Input
@@ -179,7 +179,7 @@ export default async function Login({
           required
         />
 
-        <Label className="text-md" htmlFor="password">
+        <Label className="text-base" htmlFor="password">
           Password
         </Label>
         <Input

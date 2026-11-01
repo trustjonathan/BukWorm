@@ -8,7 +8,7 @@ export default function WorkspacePage() {
 
   return (
     <div className="flex h-screen w-full flex-col items-center justify-center">
-      <div className="text-4xl">{selectedWorkspace?.name}</div>
+      <div className="text-2xl">{selectedWorkspace?.name}</div>
     </div>
   )
 }

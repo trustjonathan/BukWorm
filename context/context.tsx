@@ -14,6 +14,9 @@ import { NexusAgentId } from "@/lib/chat-agents"
 import { Dispatch, SetStateAction, createContext } from "react"
 
 interface ChatbotUIContext {
+  streamingSpeed: "instant" | "natural" | "relaxed"
+  setStreamingSpeed: Dispatch<SetStateAction<"instant" | "natural" | "relaxed">>
+
   // PROFILE STORE
   profile: Tables<"profiles"> | null
   setProfile: Dispatch<SetStateAction<Tables<"profiles"> | null>>
@@ -89,6 +92,8 @@ interface ChatbotUIContext {
   setFirstTokenReceived: Dispatch<SetStateAction<boolean>>
   isGenerating: boolean
   setIsGenerating: Dispatch<SetStateAction<boolean>>
+  streamRevealSkipped: boolean
+  setStreamRevealSkipped: Dispatch<SetStateAction<boolean>>
 
   // CHAT INPUT COMMAND STORE
   isPromptPickerOpen: boolean
@@ -151,6 +156,9 @@ interface ChatbotUIContext {
 }
 
 export const ChatbotUIContext = createContext<ChatbotUIContext>({
+  streamingSpeed: "natural",
+  setStreamingSpeed: () => {},
+
   // PROFILE STORE
   profile: null,
   setProfile: () => {},
@@ -224,6 +232,8 @@ export const ChatbotUIContext = createContext<ChatbotUIContext>({
   setIsGenerating: () => {},
   firstTokenReceived: false,
   setFirstTokenReceived: () => {},
+  streamRevealSkipped: false,
+  setStreamRevealSkipped: () => {},
   abortController: null,
   setAbortController: () => {},
 

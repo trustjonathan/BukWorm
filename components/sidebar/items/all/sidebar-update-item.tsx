@@ -640,7 +640,7 @@ export const SidebarUpdateItem: FC<SidebarUpdateItemProps> = ({
       >
         <div className="grow overflow-auto">
           <SheetHeader>
-            <SheetTitle className="text-2xl font-bold">
+            <SheetTitle className="text-xl font-bold">
               Edit {contentType.slice(0, -1)}
             </SheetTitle>
           </SheetHeader>

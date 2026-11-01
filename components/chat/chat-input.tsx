@@ -1,7 +1,6 @@
 import { ChatbotUIContext } from "@/context/context"
 import useHotkey from "@/lib/hooks/use-hotkey"
 import { LLM_LIST } from "@/lib/models/llm/llm-list"
-import { cn } from "@/lib/utils"
 import {
   IconBolt,
   IconCirclePlus,
@@ -167,22 +166,22 @@ export const ChatInput: FC<ChatInputProps> = ({}) => {
 
         {selectedTools &&
           selectedTools.map((tool, index) => (
-            <div
-              key={index}
-              className="flex justify-center"
-              onClick={() =>
-                setSelectedTools(
-                  selectedTools.filter(
-                    selectedTool => selectedTool.id !== tool.id
+            <div key={index} className="flex justify-center">
+              <button
+                type="button"
+                aria-label={`Remove tool ${tool.name}`}
+                className="bg-accent text-accent-foreground hover:bg-accent/80 focus-visible:ring-ring flex min-h-9 items-center justify-center gap-1 rounded-md px-3 py-1 focus-visible:outline-none focus-visible:ring-2"
+                onClick={() =>
+                  setSelectedTools(
+                    selectedTools.filter(
+                      selectedTool => selectedTool.id !== tool.id
+                    )
                   )
-                )
-              }
-            >
-              <div className="flex cursor-pointer items-center justify-center space-x-1 rounded-lg bg-purple-600 px-3 py-1 hover:opacity-50">
+                }
+              >
                 <IconBolt size={20} />
-
-                <div>{tool.name}</div>
-              </div>
+                <span>{tool.name}</span>
+              </button>
             </div>
           ))}
 
@@ -209,17 +208,20 @@ export const ChatInput: FC<ChatInputProps> = ({}) => {
         )}
       </div>
 
-      <div className="relative mt-3 flex min-h-[60px] w-full items-center justify-center rounded-2xl border border-sky-200 bg-white/85 shadow-[0_12px_42px_rgba(56,189,248,0.12)] backdrop-blur-xl transition-colors focus-within:border-sky-400 dark:border-slate-700 dark:bg-slate-900/85 dark:shadow-[0_12px_42px_rgba(34,211,238,0.08)] dark:focus-within:border-cyan-400">
+      <div className="border-border bg-card focus-within:ring-ring/30 relative mt-3 flex min-h-[60px] w-full items-center justify-center rounded-xl border shadow-sm transition-shadow focus-within:ring-2">
         <div className="absolute bottom-[76px] left-0 max-h-[300px] w-full overflow-auto rounded-xl dark:border-none">
           <ChatCommandInput />
         </div>
 
         <>
-          <IconCirclePlus
-            className="absolute bottom-[12px] left-3 cursor-pointer p-1 text-slate-400 transition-colors hover:text-cyan-600 dark:text-slate-400 dark:hover:text-cyan-300"
-            size={32}
+          <button
+            type="button"
+            aria-label="Add attachments"
+            className="text-muted-foreground hover:bg-accent hover:text-accent-foreground focus-visible:ring-ring absolute bottom-3 left-3 flex size-9 items-center justify-center rounded-md focus-visible:outline-none focus-visible:ring-2"
             onClick={() => fileInputRef.current?.click()}
-          />
+          >
+            <IconCirclePlus />
+          </button>
 
           {/* Hidden input to select files from device */}
           <Input
@@ -236,7 +238,7 @@ export const ChatInput: FC<ChatInputProps> = ({}) => {
 
         <TextareaAutosize
           textareaRef={chatInputRef}
-          className="ring-offset-background placeholder:text-muted-foreground focus-visible:ring-ring text-md flex w-full resize-none rounded-md border-none bg-transparent px-14 py-2 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50"
+          className="ring-offset-background placeholder:text-muted-foreground flex w-full resize-none rounded-md border-none bg-transparent px-14 py-2 text-base focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50"
           placeholder={t("Ask Matrix anything... (starts a new thread)")}
           onValueChange={handleInputChange}
           value={userInput}
@@ -248,26 +250,26 @@ export const ChatInput: FC<ChatInputProps> = ({}) => {
           onCompositionEnd={() => setIsTyping(false)}
         />
 
-        <div className="absolute bottom-[14px] right-3 cursor-pointer hover:opacity-50">
+        <div className="absolute bottom-3 right-3">
           {isGenerating ? (
-            <IconPlayerStopFilled
-              className="animate-pulse rounded bg-transparent p-1 text-rose-500 hover:bg-rose-500/10 dark:text-rose-300"
+            <button
+              type="button"
+              aria-label="Stop generating"
+              className="text-destructive hover:bg-destructive/10 focus-visible:ring-ring flex size-9 items-center justify-center rounded-md focus-visible:outline-none focus-visible:ring-2"
               onClick={handleStopMessage}
-              size={30}
-            />
+            >
+              <IconPlayerStopFilled />
+            </button>
           ) : (
-            <IconSend
-              className={cn(
-                "rounded-lg bg-gradient-to-br from-cyan-500 to-indigo-500 p-1 text-white shadow-md shadow-cyan-900/15 transition hover:brightness-105",
-                !userInput && "cursor-not-allowed opacity-50"
-              )}
-              onClick={() => {
-                if (!userInput) return
-
-                handleSendMessage(userInput, chatMessages, false)
-              }}
-              size={30}
-            />
+            <button
+              type="button"
+              aria-label="Send message"
+              disabled={!userInput}
+              className="bg-primary text-primary-foreground hover:bg-primary/90 focus-visible:ring-ring flex size-9 items-center justify-center rounded-md shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-2 disabled:cursor-not-allowed disabled:opacity-50"
+              onClick={() => handleSendMessage(userInput, chatMessages, false)}
+            >
+              <IconSend />
+            </button>
           )}
         </div>
       </div>

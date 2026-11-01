@@ -292,6 +292,40 @@ export const processResponse = async (
 ) => {
   let fullText = ""
   let contentToAdd = ""
+  let localChunkBuffer = ""
+
+  const updateMessageContent = () => {
+    setChatMessages(prev =>
+      prev.map(chatMessage => {
+        if (chatMessage.message.id === lastChatMessage.message.id) {
+          const updatedChatMessage: ChatMessage = {
+            message: {
+              ...chatMessage.message,
+              content: fullText
+            },
+            fileItems: chatMessage.fileItems
+          }
+
+          return updatedChatMessage
+        }
+
+        return chatMessage
+      })
+    )
+  }
+
+  const parseLocalChunk = (chunk: string, flush = false) => {
+    const lines = (localChunkBuffer + chunk).split(/\r?\n/)
+    if (flush) {
+      localChunkBuffer = ""
+    } else {
+      localChunkBuffer = lines.pop() || ""
+    }
+
+    return lines
+      .filter(line => line.length > 0)
+      .reduce((text, line) => text + JSON.parse(line).message.content, "")
+  }
 
   if (response.body) {
     await consumeReadableStream(
@@ -301,44 +335,25 @@ export const processResponse = async (
         setToolInUse("none")
 
         try {
-          contentToAdd = isHosted
-            ? chunk
-            : // Ollama's streaming endpoint returns new-line separated JSON
-              // objects. A chunk may have more than one of these objects, so we
-              // need to split the chunk by new-lines and handle each one
-              // separately.
-              chunk
-                .trimEnd()
-                .split("\n")
-                .reduce(
-                  (acc, line) => acc + JSON.parse(line).message.content,
-                  ""
-                )
+          contentToAdd = isHosted ? chunk : parseLocalChunk(chunk)
           fullText += contentToAdd
         } catch (error) {
           console.error("Error parsing JSON:", error)
         }
 
-        setChatMessages(prev =>
-          prev.map(chatMessage => {
-            if (chatMessage.message.id === lastChatMessage.message.id) {
-              const updatedChatMessage: ChatMessage = {
-                message: {
-                  ...chatMessage.message,
-                  content: fullText
-                },
-                fileItems: chatMessage.fileItems
-              }
-
-              return updatedChatMessage
-            }
-
-            return chatMessage
-          })
-        )
+        updateMessageContent()
       },
       controller.signal
     )
+
+    if (!isHosted && localChunkBuffer.length > 0) {
+      try {
+        fullText += parseLocalChunk("", true)
+      } catch (error) {
+        console.error("Error parsing final JSON stream chunk:", error)
+      }
+      updateMessageContent()
+    }
 
     return fullText
   } else {

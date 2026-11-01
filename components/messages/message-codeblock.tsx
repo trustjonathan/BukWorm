@@ -1,5 +1,6 @@
 import { Button } from "@/components/ui/button"
 import { useCopyToClipboard } from "@/lib/hooks/use-copy-to-clipboard"
+import { cn } from "@/lib/utils"
 import { IconCheck, IconCopy, IconDownload } from "@tabler/icons-react"
 import { FC, memo } from "react"
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter"
@@ -8,6 +9,7 @@ import { oneDark } from "react-syntax-highlighter/dist/cjs/styles/prism"
 interface MessageCodeBlockProps {
   language: string
   value: string
+  className?: string
 }
 
 interface languageMap {
@@ -50,7 +52,7 @@ export const generateRandomString = (length: number, lowercase = false) => {
 }
 
 export const MessageCodeBlock: FC<MessageCodeBlockProps> = memo(
-  ({ language, value }) => {
+  ({ language, value, className }) => {
     const { isCopied, copyToClipboard } = useCopyToClipboard({ timeout: 2000 })
 
     const downloadAsFile = () => {
@@ -86,7 +88,12 @@ export const MessageCodeBlock: FC<MessageCodeBlockProps> = memo(
     }
 
     return (
-      <div className="codeblock relative w-full bg-zinc-950 font-sans">
+      <div
+        className={cn(
+          "codeblock relative w-full bg-zinc-950 font-sans",
+          className
+        )}
+      >
         <div className="flex w-full items-center justify-between bg-zinc-700 px-4 text-white">
           <span className="text-xs lowercase">{language}</span>
           <div className="flex items-center space-x-1">

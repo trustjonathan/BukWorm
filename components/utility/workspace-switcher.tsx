@@ -10,7 +10,7 @@ import { ChatbotUIContext } from "@/context/context"
 import { createWorkspace } from "@/db/workspaces"
 import useHotkey from "@/lib/hooks/use-hotkey"
 import { IconBuilding, IconHome, IconPlus } from "@tabler/icons-react"
-import { ChevronsUpDown } from "lucide-react"
+import { IconSelector } from "@tabler/icons-react"
 import Image from "next/image"
 import { useRouter } from "next/navigation"
 import { FC, useContext, useEffect, useState } from "react"
@@ -127,7 +127,7 @@ export const WorkspaceSwitcher: FC<WorkspaceSwitcherProps> = ({}) => {
           {getWorkspaceName(value) || "Select workspace..."}
         </div>
 
-        <ChevronsUpDown className="ml-2 size-4 shrink-0 opacity-50" />
+        <IconSelector className="ml-2 shrink-0 opacity-50" />
       </PopoverTrigger>
 
       <PopoverContent className="p-2">

@@ -224,7 +224,7 @@ export const SidebarCreateItem: FC<SidebarCreateItemProps> = ({
       >
         <div className="grow overflow-auto">
           <SheetHeader>
-            <SheetTitle className="text-2xl font-bold">
+            <SheetTitle className="text-xl font-bold">
               Create{" "}
               {contentType.charAt(0).toUpperCase() + contentType.slice(1, -1)}
             </SheetTitle>

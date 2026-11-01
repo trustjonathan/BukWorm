@@ -11,76 +11,108 @@ import {
 export const useScroll = () => {
   const { isGenerating, chatMessages } = useContext(ChatbotUIContext)
 
-  const messagesStartRef = useRef<HTMLDivElement>(null)
+  const messagesContainerRef = useRef<HTMLDivElement>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const isAutoScrolling = useRef(false)
+  const lastAutoScrolledUserId = useRef<string | null>(null)
 
-  const [isAtTop, setIsAtTop] = useState(false)
   const [isAtBottom, setIsAtBottom] = useState(true)
   const [userScrolled, setUserScrolled] = useState(false)
   const [isOverflowing, setIsOverflowing] = useState(false)
 
-  useEffect(() => {
+  const scrollToBottom = useCallback(() => {
+    isAutoScrolling.current = true
+    messagesEndRef.current?.scrollIntoView({ behavior: "instant" })
+    setIsAtBottom(true)
     setUserScrolled(false)
+    requestAnimationFrame(() => {
+      isAutoScrolling.current = false
+    })
+  }, [])
 
-    if (!isGenerating && userScrolled) {
-      setUserScrolled(false)
-    }
-  }, [isGenerating])
+  const scrollLatestUserNearTop = useCallback(() => {
+    const latestUserMessage = [...chatMessages]
+      .reverse()
+      .find(({ message }) => message.role === "user")
+    const container = messagesContainerRef.current
+    if (!latestUserMessage || !container) return
 
-  useEffect(() => {
-    if (isGenerating && !userScrolled) {
-      scrollToBottom()
-    }
+    const messageElement = Array.from(
+      container.querySelectorAll<HTMLElement>("[data-message-id]")
+    ).find(
+      element => element.dataset.messageId === latestUserMessage.message.id
+    )
+    if (!messageElement) return
+
+    isAutoScrolling.current = true
+    messageElement.scrollIntoView({ behavior: "instant", block: "start" })
+    setIsAtBottom(false)
+    setUserScrolled(true)
+    requestAnimationFrame(() => {
+      isAutoScrolling.current = false
+    })
   }, [chatMessages])
 
-  const handleScroll: UIEventHandler<HTMLDivElement> = useCallback(e => {
-    const target = e.target as HTMLDivElement
-    const bottom =
-      Math.round(target.scrollHeight) - Math.round(target.scrollTop) ===
-      Math.round(target.clientHeight)
-    setIsAtBottom(bottom)
+  useEffect(() => {
+    const container = messagesContainerRef.current
+    if (container) {
+      setIsOverflowing(container.scrollHeight > container.clientHeight)
+    }
 
-    const top = target.scrollTop === 0
-    setIsAtTop(top)
+    if (chatMessages.length === 0) {
+      lastAutoScrolledUserId.current = null
+      return
+    }
+
+    const latestUserMessage = [...chatMessages]
+      .reverse()
+      .find(({ message }) => message.role === "user")
+
+    if (
+      isGenerating &&
+      latestUserMessage &&
+      lastAutoScrolledUserId.current !== latestUserMessage.message.id
+    ) {
+      lastAutoScrolledUserId.current = latestUserMessage.message.id
+      scrollLatestUserNearTop()
+      return
+    }
+
+    if (isGenerating && isAtBottom && !userScrolled) {
+      scrollToBottom()
+    }
+  }, [
+    chatMessages,
+    isAtBottom,
+    isGenerating,
+    scrollLatestUserNearTop,
+    scrollToBottom,
+    userScrolled
+  ])
+
+  const handleScroll: UIEventHandler<HTMLDivElement> = useCallback(event => {
+    const target = event.currentTarget
+    const bottom =
+      Math.ceil(target.scrollTop + target.clientHeight) >=
+      target.scrollHeight - 2
+    setIsAtBottom(bottom)
 
     if (!bottom && !isAutoScrolling.current) {
       setUserScrolled(true)
-    } else {
+    } else if (bottom) {
       setUserScrolled(false)
     }
 
-    const isOverflow = target.scrollHeight > target.clientHeight
-    setIsOverflowing(isOverflow)
-  }, [])
-
-  const scrollToTop = useCallback(() => {
-    if (messagesStartRef.current) {
-      messagesStartRef.current.scrollIntoView({ behavior: "instant" })
-    }
-  }, [])
-
-  const scrollToBottom = useCallback(() => {
-    isAutoScrolling.current = true
-
-    setTimeout(() => {
-      if (messagesEndRef.current) {
-        messagesEndRef.current.scrollIntoView({ behavior: "instant" })
-      }
-
-      isAutoScrolling.current = false
-    }, 100)
+    setIsOverflowing(target.scrollHeight > target.clientHeight)
   }, [])
 
   return {
-    messagesStartRef,
+    messagesContainerRef,
     messagesEndRef,
-    isAtTop,
     isAtBottom,
     userScrolled,
     isOverflowing,
     handleScroll,
-    scrollToTop,
     scrollToBottom,
     setIsAtBottom
   }

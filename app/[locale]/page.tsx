@@ -6,12 +6,12 @@ import Link from "next/link"
 
 export default function HomePage() {
   return (
-    <div className="relative flex size-full flex-col items-center justify-center overflow-hidden bg-gradient-to-br from-sky-50 via-white to-violet-100 px-6 text-slate-900 dark:from-[#080d1a] dark:via-[#10172a] dark:to-[#17112c] dark:text-slate-100">
-      <div className="pointer-events-none absolute -left-36 -top-40 size-[30rem] rounded-full bg-cyan-300/25 blur-3xl dark:bg-cyan-500/10" />
-      <div className="pointer-events-none absolute -bottom-48 -right-36 size-[32rem] rounded-full bg-violet-300/25 blur-3xl dark:bg-violet-500/10" />
+    <div className="bg-background text-foreground relative flex size-full flex-col items-center justify-center overflow-hidden px-6">
+      <div className="pointer-events-none absolute -left-36 -top-40 size-[30rem] rounded-full bg-cyan-300/15 blur-3xl dark:bg-cyan-500/10" />
+      <div className="pointer-events-none absolute -bottom-48 -right-36 size-[32rem] rounded-full bg-indigo-300/15 blur-3xl dark:bg-indigo-500/10" />
 
       <div className="relative flex max-w-2xl flex-col items-center text-center">
-        <div className="mb-6 flex size-24 items-center justify-center rounded-[2rem] border border-slate-200 bg-white p-3 shadow-2xl shadow-slate-900/10 dark:border-slate-800 dark:bg-slate-900 dark:shadow-slate-950/40">
+        <div className="border-border bg-card mb-6 flex size-20 items-center justify-center rounded-2xl border p-3 shadow-md">
           <Image
             src="/matrix-black.png"
             alt="Matrix AI"
@@ -30,24 +30,21 @@ export default function HomePage() {
           />
         </div>
 
-        <div className="flex items-center gap-2 text-5xl font-bold tracking-tight">
+        <div className="flex items-center gap-2 text-2xl font-semibold tracking-tight">
           Matrix AI
-          <IconSparkles
-            className="text-cyan-600 dark:text-cyan-300"
-            size={26}
-          />
+          <IconSparkles className="text-primary" />
         </div>
-        <p className="mt-4 max-w-xl text-lg leading-relaxed text-slate-600 dark:text-slate-300">
+        <p className="text-muted-foreground mt-4 max-w-xl text-base leading-relaxed">
           Your intelligent workspace, reading companion, and reasoning assistant
           — powered by Matrix.
         </p>
 
         <Link
-          className="mt-8 inline-flex items-center gap-2 rounded-xl border border-cyan-400/30 bg-gradient-to-r from-cyan-500 to-indigo-500 px-6 py-3 font-semibold text-white shadow-xl shadow-cyan-900/20 transition hover:-translate-y-0.5 hover:shadow-cyan-900/30"
+          className="bg-primary text-primary-foreground hover:bg-primary/90 focus-visible:ring-ring mt-8 inline-flex min-h-10 items-center gap-2 rounded-md px-6 py-2 text-sm font-medium shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
           href="/login"
         >
           Start chatting
-          <IconArrowRight size={19} />
+          <IconArrowRight />
         </Link>
       </div>
     </div>

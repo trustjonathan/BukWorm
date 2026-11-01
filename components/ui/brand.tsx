@@ -27,7 +27,7 @@ export const Brand = () => {
           priority
         />
       </div>
-      <div className="text-4xl font-bold tracking-tight text-slate-900 dark:text-slate-100">
+      <div className="text-2xl font-bold tracking-tight text-slate-900 dark:text-slate-100">
         Matrix AI
       </div>
       <div className="mt-1 text-sm text-slate-500 dark:text-slate-400">

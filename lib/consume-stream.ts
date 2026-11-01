@@ -20,6 +20,8 @@ export async function consumeReadableStream(
       const { done, value } = await reader.read()
 
       if (done) {
+        const remainingText = decoder.decode()
+        if (remainingText) callback(remainingText)
         break
       }
 

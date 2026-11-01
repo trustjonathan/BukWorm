@@ -7,16 +7,16 @@
 }
 
 ::-webkit-scrollbar-thumb {
-  background-color: #ccc;
-  border-radius: 10px;
+  background-color: hsl(var(--neutral-300));
+  border-radius: var(--radius-full);
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background-color: #aaa;
+  background-color: hsl(var(--neutral-500));
 }
 
 ::-webkit-scrollbar-track:hover {
-  background-color: #f2f2f2;
+  background-color: hsl(var(--neutral-100));
 }
 
 ::-webkit-scrollbar-corner {
@@ -30,67 +30,211 @@
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 0 0% 3.9%;
+    --neutral-50: 210 40% 98%;
+    --neutral-100: 210 40% 96%;
+    --neutral-200: 214 32% 91%;
+    --neutral-300: 213 27% 84%;
+    --neutral-400: 215 20% 65%;
+    --neutral-500: 215 16% 47%;
+    --neutral-600: 215 19% 35%;
+    --neutral-700: 215 25% 27%;
+    --neutral-800: 217 33% 18%;
+    --neutral-900: 222 47% 11%;
+    --neutral-950: 229 84% 5%;
 
-    --muted: 0 0% 96.1%;
-    --muted-foreground: 0 0% 45.1%;
+    --accent-50: 185 70% 96%;
+    --accent-100: 185 65% 91%;
+    --accent-200: 185 60% 82%;
+    --accent-300: 185 60% 68%;
+    --accent-400: 186 65% 53%;
+    --accent-500: 188 85% 40%;
+    --accent-600: 190 90% 33%;
+    --accent-700: 192 94% 27%;
+    --accent-800: 193 92% 21%;
+    --accent-900: 195 90% 16%;
+    --accent-950: 197 90% 10%;
 
+    --danger-50: 0 86% 96%;
+    --danger-200: 0 80% 85%;
+    --danger-300: 0 75% 75%;
+    --danger-400: 0 70% 60%;
+    --danger-500: 0 72% 45%;
+    --danger-600: 0 72% 36%;
+    --success-200: 152 50% 82%;
+    --success-400: 152 55% 42%;
+    --warning-400: 28 83% 55%;
+    --warning-500: 28 83% 42%;
+
+    --text-neutral-300: 215 25% 27%;
+    --text-neutral-400: 215 16% 40%;
+    --text-neutral-500: 215 19% 35%;
+
+    --background: 210 40% 98%;
+    --foreground: 222 47% 11%;
+    --muted: 210 40% 96%;
+    --muted-foreground: 215 16% 40%;
     --popover: 0 0% 100%;
-    --popover-foreground: 0 0% 3.9%;
-
+    --popover-foreground: 222 47% 11%;
     --card: 0 0% 100%;
-    --card-foreground: 0 0% 3.9%;
+    --card-foreground: 222 47% 11%;
+    --border: 214 32% 91%;
+    --input: 214 32% 91%;
+    --primary: var(--accent-700);
+    --primary-foreground: 0 0% 100%;
+    --secondary: 210 40% 96%;
+    --secondary-foreground: 222 47% 11%;
+    --accent: var(--accent-50);
+    --accent-foreground: var(--accent-800);
+    --destructive: 0 72% 45%;
+    --destructive-foreground: 0 0% 100%;
+    --success: 152 69% 25%;
+    --success-foreground: 0 0% 100%;
+    --warning: 28 83% 32%;
+    --warning-foreground: 0 0% 100%;
+    --ring: var(--accent-700);
 
-    --border: 0 0% 89.8%;
-    --input: 0 0% 89.8%;
+    --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+      "Liberation Mono", monospace;
+    --icon-size: 18px;
+    --icon-stroke-width: 1.75;
 
-    --primary: 0 0% 9%;
-    --primary-foreground: 0 0% 98%;
+    --space-1: 0.25rem;
+    --space-2: 0.5rem;
+    --space-3: 0.75rem;
+    --space-4: 1rem;
+    --space-5: 1.25rem;
+    --space-6: 1.5rem;
+    --space-8: 2rem;
+    --space-10: 2.5rem;
+    --space-12: 3rem;
+    --space-14: 3.5rem;
+    --space-16: 4rem;
+    --space-20: 5rem;
+    --space-24: 6rem;
+    --space-32: 8rem;
 
-    --secondary: 0 0% 96.1%;
-    --secondary-foreground: 0 0% 9%;
+    --radius-sm: 0.25rem;
+    --radius-md: 0.5rem;
+    --radius-full: 9999px;
+    --radius: var(--radius-md);
 
-    --accent: 0 0% 96.1%;
-    --accent-foreground: 0 0% 9%;
-
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 0 0% 98%;
-
-    --ring: 0 0% 63.9%;
-
-    --radius: 0.5rem;
+    --shadow-sm: 0 1px 2px hsl(222 47% 11% / 0.06);
+    --shadow-md: 0 4px 12px -2px hsl(222 47% 11% / 0.08);
+    --shadow-lg: 0 12px 32px -8px hsl(222 47% 11% / 0.12);
   }
 
   .dark {
-    --background: 0 0% 3.9%;
-    --foreground: 0 0% 98%;
+    --background: 222 30% 8%;
+    --foreground: 210 40% 96%;
+    --muted: 222 24% 14%;
+    --muted-foreground: 215 20% 72%;
+    --popover: 222 30% 9%;
+    --popover-foreground: 210 40% 96%;
+    --card: 222 30% 10%;
+    --card-foreground: 210 40% 96%;
+    --border: 217 24% 20%;
+    --input: 217 24% 20%;
+    --primary: var(--accent-300);
+    --primary-foreground: 197 90% 10%;
+    --secondary: 222 24% 14%;
+    --secondary-foreground: 210 40% 96%;
+    --accent: 193 35% 17%;
+    --accent-foreground: 185 60% 82%;
+    --destructive: 0 62% 38%;
+    --destructive-foreground: 0 0% 98%;
+    --success: 152 55% 40%;
+    --success-foreground: 0 0% 100%;
+    --warning: 28 75% 48%;
+    --warning-foreground: 0 0% 100%;
+    --ring: var(--accent-300);
+    --text-neutral-300: 210 40% 96%;
+    --text-neutral-400: 215 20% 72%;
+    --text-neutral-500: 215 20% 72%;
+  }
+}
 
-    --muted: 0 0% 14.9%;
-    --muted-foreground: 0 0% 63.9%;
+@keyframes matrix-mark-breathe {
+  0%,
+  100% {
+    opacity: 0.7;
+    transform: scale(0.9);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.1);
+  }
+}
 
-    --popover: 0 0% 3.9%;
-    --popover-foreground: 0 0% 98%;
+@keyframes matrix-mark-orbit {
+  to {
+    transform: rotate(360deg);
+  }
+}
 
-    --card: 0 0% 3.9%;
-    --card-foreground: 0 0% 98%;
+@keyframes matrix-text-reveal {
+  from {
+    opacity: 0.65;
+  }
+  to {
+    opacity: 1;
+  }
+}
 
-    --border: 0 0% 14.9%;
-    --input: 0 0% 14.9%;
+.animate-matrix-mark {
+  animation: matrix-mark-breathe 1.6s ease-in-out infinite;
+}
 
-    --primary: 0 0% 98%;
-    --primary-foreground: 0 0% 9%;
+.matrix-mark-ring {
+  position: absolute;
+  inset: -2px;
+  border: 2px solid hsl(var(--ring) / 0.8);
+  border-top-color: hsl(var(--ring));
+  border-radius: 9999px;
+  animation: matrix-mark-orbit 2.4s linear infinite;
+  filter: drop-shadow(0 0 3px hsl(var(--ring) / 0.4));
+}
 
-    --secondary: 0 0% 14.9%;
-    --secondary-foreground: 0 0% 98%;
+.matrix-streaming-text {
+  animation: matrix-text-reveal 120ms ease-out both;
+}
 
-    --accent: 0 0% 14.9%;
-    --accent-foreground: 0 0% 98%;
+.matrix-streaming-block {
+  animation: matrix-text-reveal 150ms ease-out both;
+}
 
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 0 85.7% 97.3%;
+.katex-display {
+  max-width: 100%;
+  margin: 1.25rem 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  text-align: center;
+}
 
-    --ring: 0 0% 14.9%;
+@media (prefers-reduced-motion: reduce) {
+  .animate-matrix-mark {
+    animation: matrix-mark-reduced-pulse 3.2s ease-in-out infinite;
+  }
+
+  .matrix-mark-ring {
+    animation: none;
+  }
+
+  .matrix-streaming-text {
+    animation: none;
+  }
+
+  .matrix-streaming-block {
+    animation: none;
+  }
+}
+
+@keyframes matrix-mark-reduced-pulse {
+  0%,
+  100% {
+    opacity: 0.7;
+  }
+  50% {
+    opacity: 1;
   }
 }
 
@@ -98,7 +242,25 @@
   * {
     @apply border-border;
   }
+
+  svg.tabler-icon {
+    width: var(--icon-size);
+    height: var(--icon-size);
+    stroke-width: var(--icon-stroke-width);
+  }
+
+  svg.tabler-icon[class~="size-2"] {
+    width: 0.5rem;
+    height: 0.5rem;
+  }
+
+  svg.tabler-icon[class~="size-2.5"] {
+    width: 0.625rem;
+    height: 0.625rem;
+  }
+
   body {
     @apply bg-background text-foreground;
+    font-family: var(--font-inter), Inter, ui-sans-serif, system-ui, sans-serif;
   }
 }

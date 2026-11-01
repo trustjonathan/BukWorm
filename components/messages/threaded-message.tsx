@@ -319,7 +319,7 @@ export const ThreadedMessage: FC<ThreadedMessageProps> = ({
                     : profile?.display_name ?? profile?.username ?? "You"}
                 </span>
                 {isAssistant && (
-                  <span className="rounded border border-cyan-300 bg-cyan-50 px-1.5 py-0.5 font-mono text-[10px] text-cyan-700 dark:border-cyan-800 dark:bg-cyan-950 dark:text-cyan-400">
+                  <span className="rounded border border-cyan-300 bg-cyan-50 px-1.5 py-0.5 font-sans text-xs text-cyan-700 dark:border-cyan-800 dark:bg-cyan-950 dark:text-cyan-400">
                     MATRIX NODE
                   </span>
                 )}
@@ -395,7 +395,7 @@ export const ThreadedMessage: FC<ThreadedMessageProps> = ({
               ) : isEditing ? (
                 <TextareaAutosize
                   textareaRef={editInputRef}
-                  className="text-md w-full bg-transparent"
+                  className="w-full bg-transparent text-base"
                   value={editedMessage}
                   onValueChange={setEditedMessage}
                   maxRows={20}
@@ -543,7 +543,7 @@ export const ThreadedMessage: FC<ThreadedMessageProps> = ({
           {children.length > 0 && (
             <div className="mt-2 flex items-center justify-end text-xs text-slate-500">
               <button
-                className="flex items-center gap-1 font-mono text-[11px] text-cyan-500 hover:underline"
+                className="text-caption flex items-center gap-1 font-sans text-cyan-500 hover:underline"
                 onClick={() => setShowChildren(s => !s)}
               >
                 <IconMessage size={12} />

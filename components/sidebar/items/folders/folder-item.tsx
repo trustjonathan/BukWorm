@@ -2,7 +2,7 @@ import { cn } from "@/lib/utils"
 import { Tables } from "@/supabase/types"
 import { ContentType } from "@/types"
 import { IconChevronDown, IconChevronRight } from "@tabler/icons-react"
-import { FC, useRef, useState } from "react"
+import { FC, useState } from "react"
 import { DeleteFolder } from "./delete-folder"
 import { UpdateFolder } from "./update-folder"
 
@@ -19,8 +19,6 @@ export const Folder: FC<FolderProps> = ({
   children,
   onUpdateFolder
 }) => {
-  const itemRef = useRef<HTMLDivElement>(null)
-
   const [isDragOver, setIsDragOver] = useState(false)
   const [isExpanded, setIsExpanded] = useState(false)
   const [isHovering, setIsHovering] = useState(false)
@@ -48,62 +46,47 @@ export const Folder: FC<FolderProps> = ({
     onUpdateFolder(itemId, folder.id)
   }
 
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
-    if (e.key === "Enter") {
-      e.stopPropagation()
-      itemRef.current?.click()
-    }
-  }
-
-  const handleClick = (e: React.MouseEvent<HTMLDivElement>) => {
+  const handleClick = () => {
     setIsExpanded(!isExpanded)
   }
 
   return (
     <div
-      ref={itemRef}
       id="folder"
-      className={cn("rounded focus:outline-none", isDragOver && "bg-accent")}
+      className={cn("rounded", isDragOver && "bg-accent")}
       onDragEnter={handleDragEnter}
       onDragLeave={handleDragLeave}
       onDragOver={handleDragOver}
       onDrop={handleDrop}
-      onKeyDown={handleKeyDown}
       onMouseEnter={() => setIsHovering(true)}
       onMouseLeave={() => setIsHovering(false)}
+      onFocus={() => setIsHovering(true)}
+      onBlur={event => {
+        if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
+          setIsHovering(false)
+        }
+      }}
     >
-      <div
-        tabIndex={0}
-        className={cn(
-          "hover:bg-accent focus:bg-accent flex w-full cursor-pointer items-center justify-between rounded p-2 hover:opacity-50 focus:outline-none"
-        )}
-        onClick={handleClick}
-      >
-        <div className="flex w-full items-center justify-between">
-          <div className="flex items-center space-x-2">
-            {isExpanded ? (
-              <IconChevronDown stroke={3} />
-            ) : (
-              <IconChevronRight stroke={3} />
-            )}
+      <div className="hover:bg-accent focus-within:bg-accent flex min-h-9 items-center rounded-md">
+        <button
+          type="button"
+          aria-expanded={isExpanded}
+          aria-label={`${isExpanded ? "Collapse" : "Expand"} ${folder.name} folder`}
+          className="text-foreground focus-visible:ring-ring flex min-h-9 min-w-0 flex-1 items-center gap-2 rounded-md px-2 text-left text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset"
+          onClick={handleClick}
+        >
+          <span className="flex shrink-0" aria-hidden="true">
+            {isExpanded ? <IconChevronDown /> : <IconChevronRight />}
+          </span>
+          <span className="truncate">{folder.name}</span>
+        </button>
 
-            <div>{folder.name}</div>
+        {isHovering && (
+          <div className="ml-1 flex shrink-0 items-center gap-1 pr-1">
+            <UpdateFolder folder={folder} />
+            <DeleteFolder folder={folder} contentType={contentType} />
           </div>
-
-          {isHovering && (
-            <div
-              onClick={e => {
-                e.stopPropagation()
-                e.preventDefault()
-              }}
-              className="ml-2 flex space-x-2"
-            >
-              <UpdateFolder folder={folder} />
-
-              <DeleteFolder folder={folder} contentType={contentType} />
-            </div>
-          )}
-        </div>
+        )}
       </div>
 
       {isExpanded && (

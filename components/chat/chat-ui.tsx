@@ -60,15 +60,13 @@ export const ChatUI: FC<ChatUIProps> = ({}) => {
   const { handleNewChat, handleFocusChatInput } = useChatHandler()
 
   const {
-    messagesStartRef,
+    messagesContainerRef,
     messagesEndRef,
     handleScroll,
     scrollToBottom,
     setIsAtBottom,
-    isAtTop,
     isAtBottom,
-    isOverflowing,
-    scrollToTop
+    isOverflowing
   } = useScroll()
 
   const [loading, setLoading] = useState(true)
@@ -204,17 +202,9 @@ export const ChatUI: FC<ChatUIProps> = ({}) => {
   }
 
   return (
-    <div className="relative flex h-full min-w-0 overflow-hidden bg-slate-50 text-slate-800 transition-colors dark:bg-[#070a13] dark:text-slate-100">
-      <div
-        className="pointer-events-none absolute inset-0 overflow-hidden"
-        aria-hidden="true"
-      >
-        <div className="absolute -left-40 -top-48 size-[32rem] rounded-full bg-cyan-300/15 blur-3xl dark:bg-cyan-500/10" />
-        <div className="absolute -bottom-56 -right-32 size-[34rem] rounded-full bg-indigo-300/15 blur-3xl dark:bg-indigo-500/10" />
-      </div>
-
+    <div className="bg-background text-foreground relative flex h-full min-w-0 overflow-hidden transition-colors">
       <main className="relative z-10 flex min-w-0 flex-1 flex-col">
-        <header className="flex min-h-[64px] items-center justify-between gap-2 border-b border-slate-200/80 bg-white/70 px-3 backdrop-blur-xl sm:gap-3 sm:px-6 dark:border-slate-800/80 dark:bg-slate-950/40">
+        <header className="border-border bg-background/95 flex min-h-[64px] items-center justify-between gap-2 border-b px-3 sm:gap-3 sm:px-6">
           <div className="flex min-w-0 flex-1 items-center gap-2.5">
             {/* Sidebar toggle button (visible on all screens) */}
             <Button
@@ -251,14 +241,25 @@ export const ChatUI: FC<ChatUIProps> = ({}) => {
             <QuickSettings />
             <ChatSettings />
             <ChatSecondaryButtons />
+            <ChatHelp />
           </div>
         </header>
 
         <div className="flex min-h-0 flex-1">
           <div className="relative flex min-w-0 flex-1 flex-col">
             {chatMessages.length === 0 && (
+              <div
+                className="pointer-events-none absolute inset-x-0 top-0 h-[55%] overflow-hidden"
+                aria-hidden="true"
+              >
+                <div className="absolute -left-24 -top-32 size-[28rem] rounded-full bg-cyan-300/10 blur-3xl dark:bg-cyan-500/10" />
+                <div className="absolute -right-24 -top-24 size-[28rem] rounded-full bg-indigo-300/10 blur-3xl dark:bg-indigo-500/10" />
+              </div>
+            )}
+
+            {chatMessages.length === 0 && (
               <div className="pointer-events-none absolute inset-x-4 top-[24%] z-0 text-center">
-                <div className="mx-auto mb-5 flex size-20 items-center justify-center rounded-[2rem] border border-slate-200 bg-white p-3 shadow-xl shadow-slate-900/10 dark:border-slate-800 dark:bg-slate-900 dark:shadow-slate-950/40">
+                <div className="border-border bg-card mx-auto mb-5 flex size-20 items-center justify-center rounded-2xl border p-3 shadow-md">
                   <Image
                     src="/matrix-black.png"
                     alt="Matrix AI"
@@ -276,40 +277,34 @@ export const ChatUI: FC<ChatUIProps> = ({}) => {
                     priority
                   />
                 </div>
-                <div className="text-2xl font-bold tracking-tight text-slate-900 dark:text-slate-100">
+                <div className="text-foreground text-xl font-bold tracking-tight">
                   Matrix AI Workspace
                 </div>
-                <p className="mx-auto mt-2 max-w-lg text-sm leading-relaxed text-slate-600 dark:text-slate-400">
+                <p className="text-muted-foreground mx-auto mt-2 max-w-lg text-sm leading-relaxed">
                   Ask Matrix anything. Ready with thoughtful, step-by-step
                   reasoning and context-aware discussion.
                 </p>
               </div>
             )}
 
-            <div className="absolute left-3 top-2 z-10 flex justify-center">
-              <ChatScrollButtons
-                isAtTop={isAtTop}
-                isAtBottom={isAtBottom}
-                isOverflowing={isOverflowing}
-                scrollToTop={scrollToTop}
-                scrollToBottom={scrollToBottom}
-              />
-            </div>
-
             <div
+              ref={messagesContainerRef}
               className="relative z-[1] flex min-h-0 flex-1 flex-col overflow-auto"
               onScroll={handleScroll}
             >
-              <div ref={messagesStartRef} />
               <ChatMessages />
               <div ref={messagesEndRef} />
             </div>
 
             <div className="relative z-10 w-full px-3 pb-3 pt-2 sm:px-5 sm:pb-5">
+              <div className="pointer-events-none absolute inset-x-0 bottom-full mb-2 flex justify-center">
+                <ChatScrollButtons
+                  isAtBottom={isAtBottom}
+                  isOverflowing={isOverflowing}
+                  scrollToBottom={scrollToBottom}
+                />
+              </div>
               <ChatInput />
-            </div>
-            <div className="absolute bottom-2 right-2 z-20 hidden md:block lg:bottom-4 lg:right-4">
-              <ChatHelp />
             </div>
           </div>
         </div>

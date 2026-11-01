@@ -42,6 +42,7 @@ export const useChatHandler = () => {
     setNewMessageImages,
     profile,
     setIsGenerating,
+    setStreamRevealSkipped,
     setChatMessages,
     setFirstTokenReceived,
     selectedChat,
@@ -98,6 +99,7 @@ export const useChatHandler = () => {
     setChatFileItems([])
 
     setIsGenerating(false)
+    setStreamRevealSkipped(false)
     setFirstTokenReceived(false)
 
     setChatFiles([])
@@ -192,6 +194,7 @@ export const useChatHandler = () => {
 
   const handleStopMessage = () => {
     if (abortController) {
+      setStreamRevealSkipped(true)
       abortController.abort()
     }
   }
@@ -271,12 +274,51 @@ export const useChatHandler = () => {
 
     setUserInput("")
     setIsGenerating(true)
+    setStreamRevealSkipped(false)
     setIsPromptPickerOpen(false)
     setIsFilePickerOpen(false)
     setNewMessageImages([])
 
     const controller = new AbortController()
     setAbortController(controller)
+
+    const userMessage: ChatMessage = {
+      message: {
+        chat_id: selectedChat?.id || "",
+        assistant_id: null,
+        content: messageContent,
+        created_at: new Date().toISOString(),
+        id: uuidv4(),
+        image_paths: newMessageImages.map(image => image.base64),
+        model: chatSettings.model,
+        role: "user",
+        sequence_number: history.length,
+        updated_at: new Date().toISOString(),
+        user_id: profile.user_id
+      },
+      fileItems: []
+    }
+
+    const pendingAgentMessages: ChatMessage[] = validAgentRequests.map(
+      ({ modelData }, index) => ({
+        message: {
+          chat_id: selectedChat?.id || "",
+          assistant_id: null,
+          content: "",
+          created_at: new Date().toISOString(),
+          id: uuidv4(),
+          image_paths: [],
+          model: modelData.modelId,
+          role: "assistant",
+          sequence_number: history.length + index + 1,
+          updated_at: new Date().toISOString(),
+          user_id: profile.user_id
+        },
+        fileItems: []
+      })
+    )
+
+    setChatMessages([...history, userMessage, ...pendingAgentMessages])
 
     let retrievedFileItems: Tables<"file_items">[] = []
     try {
@@ -294,43 +336,6 @@ export const useChatHandler = () => {
         )
       }
 
-      const userMessage: ChatMessage = {
-        message: {
-          chat_id: selectedChat?.id || "",
-          assistant_id: null,
-          content: messageContent,
-          created_at: new Date().toISOString(),
-          id: uuidv4(),
-          image_paths: newMessageImages.map(image => image.base64),
-          model: chatSettings.model,
-          role: "user",
-          sequence_number: history.length,
-          updated_at: new Date().toISOString(),
-          user_id: profile.user_id
-        },
-        fileItems: []
-      }
-
-      const pendingAgentMessages: ChatMessage[] = validAgentRequests.map(
-        ({ modelData }, index) => ({
-          message: {
-            chat_id: selectedChat?.id || "",
-            assistant_id: null,
-            content: "",
-            created_at: new Date().toISOString(),
-            id: uuidv4(),
-            image_paths: [],
-            model: modelData.modelId,
-            role: "assistant",
-            sequence_number: history.length + index + 1,
-            updated_at: new Date().toISOString(),
-            user_id: profile.user_id
-          },
-          fileItems: []
-        })
-      )
-
-      setChatMessages([...history, userMessage, ...pendingAgentMessages])
       setToolInUse("Matrix")
 
       const responses = await Promise.allSettled(
@@ -486,6 +491,7 @@ export const useChatHandler = () => {
     try {
       setUserInput("")
       setIsGenerating(true)
+      setStreamRevealSkipped(false)
       setIsPromptPickerOpen(false)
       setIsFilePickerOpen(false)
       setNewMessageImages([])
@@ -518,6 +524,17 @@ export const useChatHandler = () => {
       let currentChat = selectedChat ? { ...selectedChat } : null
 
       const b64Images = newMessageImages.map(image => image.base64)
+      const { tempUserChatMessage, tempAssistantChatMessage } =
+        createTempMessages(
+          messageContent,
+          chatMessages,
+          chatSettings!,
+          b64Images,
+          isRegeneration,
+          setChatMessages,
+          selectedAssistant,
+          parentId
+        )
 
       let retrievedFileItems: Tables<"file_items">[] = []
 
@@ -535,18 +552,6 @@ export const useChatHandler = () => {
           sourceCount
         )
       }
-
-      const { tempUserChatMessage, tempAssistantChatMessage } =
-        createTempMessages(
-          messageContent,
-          chatMessages,
-          chatSettings!,
-          b64Images,
-          isRegeneration,
-          setChatMessages,
-          selectedAssistant,
-          parentId
-        )
 
       let payload: ChatPayload = {
         chatSettings: chatSettings!,

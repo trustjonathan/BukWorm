@@ -12,7 +12,7 @@ import { ReactNode } from "react"
 import "katex/dist/katex.min.css"
 import "./globals.css"
 
-const inter = Inter({ subsets: ["latin"] })
+const inter = Inter({ subsets: ["latin"], variable: "--font-inter" })
 const APP_NAME = "Matrix AI"
 const APP_DEFAULT_TITLE = "Matrix AI"
 const APP_TITLE_TEMPLATE = "%s - Matrix AI"
@@ -131,7 +131,7 @@ export default async function RootLayout({
 
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={inter.className}>
+      <body className={inter.variable}>
         <Providers attribute="class" defaultTheme="system">
           <TranslationsProvider
             namespaces={i18nNamespaces}

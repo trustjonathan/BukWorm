@@ -7,6 +7,7 @@ import {
 } from "@tabler/icons-react"
 import Link from "next/link"
 import { FC, useState } from "react"
+import { Button } from "../ui/button"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -27,7 +28,14 @@ export const ChatHelp: FC<ChatHelpProps> = ({}) => {
   return (
     <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
       <DropdownMenuTrigger asChild>
-        <IconQuestionMark className="bg-primary text-secondary size-[24px] cursor-pointer rounded-full p-0.5 opacity-60 hover:opacity-50 lg:size-[30px] lg:p-1" />
+        <Button
+          variant="ghost"
+          size="icon"
+          className="size-9"
+          aria-label="Help and keyboard shortcuts"
+        >
+          <IconQuestionMark />
+        </Button>
       </DropdownMenuTrigger>
 
       <DropdownMenuContent align="end">
@@ -35,6 +43,7 @@ export const ChatHelp: FC<ChatHelpProps> = ({}) => {
           <div className="flex space-x-2">
             <Link
               className="cursor-pointer hover:opacity-50"
+              aria-label="Follow Matrix AI on X"
               href="https://twitter.com/ChatbotUI"
               target="_blank"
               rel="noopener noreferrer"
@@ -44,6 +53,7 @@ export const ChatHelp: FC<ChatHelpProps> = ({}) => {
 
             <Link
               className="cursor-pointer hover:opacity-50"
+              aria-label="Matrix AI GitHub repository"
               href="https://github.com/mckaywrigley/chatbot-ui"
               target="_blank"
               rel="noopener noreferrer"
@@ -57,6 +67,7 @@ export const ChatHelp: FC<ChatHelpProps> = ({}) => {
 
             <Link
               className="cursor-pointer hover:opacity-50"
+              aria-label="Help"
               href="/help"
               target="_blank"
               rel="noopener noreferrer"

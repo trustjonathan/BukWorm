@@ -12,7 +12,7 @@ import {
   IconChevronDown,
   IconCircleCheckFilled
 } from "@tabler/icons-react"
-import { FileIcon } from "lucide-react"
+import { FileIcon } from "@/components/ui/file-icon"
 import { FC, useContext, useEffect, useRef, useState } from "react"
 
 interface AssistantRetrievalSelectProps {
@@ -178,7 +178,7 @@ const AssistantRetrievalItemOption: FC<AssistantRetrievalOptionItemProps> = ({
       <div className="flex grow items-center truncate">
         {contentType === "files" ? (
           <div className="mr-2 min-w-[24px]">
-            <FileIcon type={(item as Tables<"files">).type} size={24} />
+            <FileIcon type={(item as Tables<"files">).type} />
           </div>
         ) : (
           <div className="mr-2 min-w-[24px]">

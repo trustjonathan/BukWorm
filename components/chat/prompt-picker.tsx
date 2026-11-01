@@ -185,7 +185,7 @@ export const PromptPicker: FC<PromptPickerProps> = ({}) => {
               </DialogContent>
             </Dialog>
           ) : filteredPrompts.length === 0 ? (
-            <div className="text-md flex h-14 cursor-pointer items-center justify-center italic hover:opacity-50">
+            <div className="flex h-14 cursor-pointer items-center justify-center text-base italic hover:opacity-50">
               No matching prompts.
             </div>
           ) : (

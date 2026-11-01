@@ -1,7 +1,7 @@
 import { ChatbotUIContext } from "@/context/context"
 import { CHAT_SETTING_LIMITS } from "@/lib/chat-setting-limits"
 import useHotkey from "@/lib/hooks/use-hotkey"
-import { IconAdjustmentsHorizontal } from "@tabler/icons-react"
+import { IconChevronDown } from "@tabler/icons-react"
 import { FC, useContext, useEffect, useRef } from "react"
 import { Button } from "../ui/button"
 import { ChatSettingsForm } from "../ui/chat-settings-form"
@@ -50,14 +50,16 @@ export const ChatSettings: FC<ChatSettingsProps> = ({}) => {
       <PopoverTrigger asChild>
         <Button
           ref={buttonRef}
-          className="flex items-center space-x-2"
+          className="text-muted-foreground hover:text-foreground max-w-[240px] gap-1 px-2 text-sm sm:max-w-[320px]"
           variant="ghost"
+          size="sm"
+          aria-label={`Choose model and settings: ${fullModel?.modelName || chatSettings.model}`}
         >
-          <div className="max-w-[88px] truncate text-sm sm:max-w-[300px] sm:text-lg lg:max-w-[500px]">
+          <div className="max-w-[88px] truncate text-sm sm:max-w-[300px] lg:max-w-[500px]">
             {fullModel?.modelName || chatSettings.model}
           </div>
 
-          <IconAdjustmentsHorizontal size={28} />
+          <IconChevronDown className="shrink-0" />
         </Button>
       </PopoverTrigger>
 

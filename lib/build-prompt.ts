@@ -25,6 +25,8 @@ const buildBasePrompt = (
     fullPrompt += `System Instructions:\n${workspaceInstructions}\n\n`
   }
 
+  fullPrompt += `Math formatting:\n- Use LaTeX. Use $...$ only for short expressions inside a sentence. Put every equation or calculation step on its own line in $$...$$, with a blank line before and after.\n- Never place more than one equation or step in a single line of prose. For multi-step working, use one $$ block per step, or one $$\\begin{aligned} ... \\end{aligned}$$ block with each step on its own line.\n- Always wrap fractions, exponents and denominators in braces, e.g. \\frac{C}{(x+1)^{2}}.\n- Introduce each step with a short sentence, then show the equation. Use bullet lists only for short non-math items.\n\n`
+
   fullPrompt += `User Instructions:\n${prompt}`
 
   return fullPrompt

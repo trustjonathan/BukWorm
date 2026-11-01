@@ -20,13 +20,12 @@ import {
   IconFileDownload,
   IconLoader2,
   IconLogout,
-  IconUser
+  IconSettings
 } from "@tabler/icons-react"
 import Image from "next/image"
 import { useRouter } from "next/navigation"
 import { FC, useCallback, useContext, useRef, useState } from "react"
 import { toast } from "sonner"
-import { SIDEBAR_ICON_SIZE } from "../sidebar/sidebar-switcher"
 import { Button } from "../ui/button"
 import ImagePicker from "../ui/image-picker"
 import { Input } from "../ui/input"
@@ -290,19 +289,14 @@ export const ProfileSettings: FC<ProfileSettingsProps> = ({}) => {
   return (
     <Sheet open={isOpen} onOpenChange={setIsOpen}>
       <SheetTrigger asChild>
-        {profile.image_url ? (
-          <Image
-            className="mt-2 size-[34px] cursor-pointer rounded hover:opacity-50"
-            src={profile.image_url + "?" + new Date().getTime()}
-            height={34}
-            width={34}
-            alt={"Image"}
-          />
-        ) : (
-          <Button size="icon" variant="ghost">
-            <IconUser size={SIDEBAR_ICON_SIZE} />
-          </Button>
-        )}
+        <Button
+          size="icon"
+          variant="ghost"
+          className="size-9"
+          aria-label="Open profile settings"
+        >
+          <IconSettings />
+        </Button>
       </SheetTrigger>
 
       <SheetContent
@@ -448,7 +442,7 @@ export const ProfileSettings: FC<ProfileSettingsProps> = ({}) => {
 
                   <Button
                     className={cn(
-                      "h-[18px] w-[150px] text-[11px]",
+                      "text-caption h-[18px] w-[150px]",
                       (useAzureOpenai && !envKeyMap["azure"]) ||
                         (!useAzureOpenai && !envKeyMap["openai"])
                         ? "ml-3"

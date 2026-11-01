@@ -16,11 +16,14 @@ import { Button } from "../ui/button"
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuLabel,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger
 } from "../ui/dropdown-menu"
 import { Input } from "../ui/input"
 import { QuickSettingOption } from "./quick-setting-option"
-import { set } from "date-fns"
 
 interface QuickSettingsProps {}
 
@@ -35,6 +38,8 @@ export const QuickSettings: FC<QuickSettingsProps> = ({}) => {
     selectedAssistant,
     selectedPreset,
     chatSettings,
+    streamingSpeed,
+    setStreamingSpeed,
     setSelectedPreset,
     setSelectedAssistant,
     setChatSettings,
@@ -194,7 +199,8 @@ export const QuickSettings: FC<QuickSettingsProps> = ({}) => {
       <DropdownMenuTrigger asChild className="max-w-[400px]" disabled={loading}>
         <Button
           variant="ghost"
-          className="flex max-w-[44px] space-x-1 text-sm sm:max-w-[400px] sm:space-x-3 sm:text-lg"
+          size="sm"
+          className="flex max-w-[44px] gap-1 text-sm sm:max-w-[320px] sm:gap-2"
           aria-label={
             selectedPreset?.name ||
             selectedAssistant?.name ||
@@ -246,16 +252,18 @@ export const QuickSettings: FC<QuickSettingsProps> = ({}) => {
       </DropdownMenuTrigger>
 
       <DropdownMenuContent
-        className="min-w-[300px] max-w-[500px] space-y-4"
+        className="max-h-[min(80vh,36rem)] min-w-[300px] max-w-[500px] overflow-y-auto"
         align="start"
       >
         {presets.length === 0 && assistants.length === 0 ? (
-          <div className="p-8 text-center">No items found.</div>
+          <div className="text-muted-foreground p-4 text-center text-sm">
+            No presets or assistants found.
+          </div>
         ) : (
-          <>
+          <div className="space-y-2">
             <Input
               ref={inputRef}
-              className="w-full"
+              className="min-h-9 w-full"
               placeholder="Search..."
               value={search}
               onChange={e => setSearch(e.target.value)}
@@ -309,8 +317,32 @@ export const QuickSettings: FC<QuickSettingsProps> = ({}) => {
                   }
                 />
               ))}
-          </>
+          </div>
         )}
+        <DropdownMenuSeparator />
+        <DropdownMenuLabel>Streaming speed</DropdownMenuLabel>
+        <DropdownMenuRadioGroup
+          value={streamingSpeed}
+          onValueChange={value => {
+            if (
+              value === "instant" ||
+              value === "natural" ||
+              value === "relaxed"
+            ) {
+              setStreamingSpeed(value)
+            }
+          }}
+        >
+          <DropdownMenuRadioItem value="instant" className="min-h-9">
+            Instant
+          </DropdownMenuRadioItem>
+          <DropdownMenuRadioItem value="natural" className="min-h-9">
+            Natural · 120 chars/s
+          </DropdownMenuRadioItem>
+          <DropdownMenuRadioItem value="relaxed" className="min-h-9">
+            Relaxed · 70 chars/s
+          </DropdownMenuRadioItem>
+        </DropdownMenuRadioGroup>
       </DropdownMenuContent>
     </DropdownMenu>
   )

@@ -83,7 +83,7 @@ export const Announcements: FC<AnnouncementsProps> = () => {
         <div className="relative cursor-pointer hover:opacity-50">
           <IconSpeakerphone size={SIDEBAR_ICON_SIZE} />
           {unreadCount > 0 && (
-            <div className="notification-indicator absolute right-[-4px] top-[-4px] flex size-4 items-center justify-center rounded-full bg-red-500 text-[10px] text-white">
+            <div className="notification-indicator absolute right-[-4px] top-[-4px] flex size-4 items-center justify-center rounded-full bg-red-500 text-xs text-white">
               {unreadCount}
             </div>
           )}
@@ -92,7 +92,7 @@ export const Announcements: FC<AnnouncementsProps> = () => {
       <PopoverContent className="mb-2 w-80" side="top">
         <div className="grid gap-4">
           <div>
-            <div className="mb-4 text-left text-xl font-bold leading-none">
+            <div className="mb-4 text-left text-lg font-bold leading-none">
               Updates
             </div>
 

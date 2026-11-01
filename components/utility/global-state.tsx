@@ -88,10 +88,14 @@ export const GlobalState: FC<GlobalStateProps> = ({ children }) => {
   >([])
   const [selectedChat, setSelectedChat] = useState<Tables<"chats"> | null>(null)
   const [chatFileItems, setChatFileItems] = useState<Tables<"file_items">[]>([])
+  const [streamingSpeed, setStreamingSpeed] = useState<
+    "instant" | "natural" | "relaxed"
+  >("natural")
 
   // ACTIVE CHAT STORE
   const [isGenerating, setIsGenerating] = useState<boolean>(false)
   const [firstTokenReceived, setFirstTokenReceived] = useState<boolean>(false)
+  const [streamRevealSkipped, setStreamRevealSkipped] = useState(false)
   const [abortController, setAbortController] =
     useState<AbortController | null>(null)
 
@@ -131,6 +135,21 @@ export const GlobalState: FC<GlobalStateProps> = ({ children }) => {
 
   // SIDEBAR STORE
   const [showSidebar, setShowSidebar] = useState<boolean>(true)
+
+  useEffect(() => {
+    const savedSpeed = localStorage.getItem("matrixStreamingSpeed")
+    if (
+      savedSpeed === "instant" ||
+      savedSpeed === "natural" ||
+      savedSpeed === "relaxed"
+    ) {
+      setStreamingSpeed(savedSpeed)
+    }
+  }, [])
+
+  useEffect(() => {
+    localStorage.setItem("matrixStreamingSpeed", streamingSpeed)
+  }, [streamingSpeed])
 
   useEffect(() => {
     const saved =
@@ -204,6 +223,9 @@ export const GlobalState: FC<GlobalStateProps> = ({ children }) => {
   return (
     <ChatbotUIContext.Provider
       value={{
+        streamingSpeed,
+        setStreamingSpeed,
+
         // PROFILE STORE
         profile,
         setProfile,
@@ -277,6 +299,8 @@ export const GlobalState: FC<GlobalStateProps> = ({ children }) => {
         setIsGenerating,
         firstTokenReceived,
         setFirstTokenReceived,
+        streamRevealSkipped,
+        setStreamRevealSkipped,
         abortController,
         setAbortController,
 

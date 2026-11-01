@@ -24,6 +24,7 @@ import {
 import Image from "next/image"
 import { useRouter } from "next/navigation"
 import { FC, useContext, useState } from "react"
+import { Button } from "../ui/button"
 import { SidebarCreateButtons } from "./sidebar-create-buttons"
 import { SidebarDataList } from "./sidebar-data-list"
 import { SidebarSearch } from "./sidebar-search"
@@ -127,11 +128,13 @@ export const MatrixSidebar: FC<MatrixSidebarProps> = ({ onClose }) => {
   // ── Render ────────────────────────────────────────────────────────────────
 
   return (
-    <aside className="relative flex h-full w-[280px] shrink-0 flex-col border-r border-slate-200 bg-[#f8fafc] text-slate-800 transition-colors dark:border-slate-800 dark:bg-[#090d16] dark:text-slate-200">
+    <aside className="border-border bg-background text-foreground relative flex h-full w-[280px] shrink-0 flex-col border-r transition-colors">
       {/* ── Top Header: Brand + Collapse ─────────────────────────────────── */}
-      <div className="flex h-14 shrink-0 items-center justify-between border-b border-slate-200/80 px-4 dark:border-slate-800/80">
-        <div
-          className="flex cursor-pointer items-center gap-2.5 transition-opacity hover:opacity-85"
+      <div className="border-border flex h-14 shrink-0 items-center justify-between border-b px-4">
+        <button
+          type="button"
+          aria-label="Go to workspace home"
+          className="focus-visible:ring-ring flex items-center gap-2.5 rounded-md text-left transition-opacity hover:opacity-85 focus-visible:outline-none focus-visible:ring-2"
           onClick={() => {
             if (selectedWorkspace) router.push(`/${selectedWorkspace.id}/chat`)
           }}
@@ -154,10 +157,10 @@ export const MatrixSidebar: FC<MatrixSidebarProps> = ({ onClose }) => {
               priority
             />
           </div>
-          <span className="text-base font-bold tracking-tight text-slate-900 dark:text-slate-100">
+          <span className="text-foreground text-base font-semibold tracking-tight">
             Matrix AI
           </span>
-        </div>
+        </button>
 
         <button
           onClick={() => {
@@ -166,14 +169,14 @@ export const MatrixSidebar: FC<MatrixSidebarProps> = ({ onClose }) => {
             if (onClose) onClose()
           }}
           aria-label="Collapse sidebar"
-          className="rounded-lg p-1.5 text-slate-500 transition-colors hover:bg-slate-200/80 hover:text-slate-800 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-100"
+          className="text-muted-foreground hover:bg-accent hover:text-accent-foreground focus-visible:ring-ring flex size-9 items-center justify-center rounded-md transition-colors focus-visible:outline-none focus-visible:ring-2"
         >
           <IconLayoutSidebar size={18} />
         </button>
       </div>
 
       {/* ── Workspace Switcher + Settings ────────────────────────────────── */}
-      <div className="flex shrink-0 items-center gap-1.5 border-b border-slate-200/80 px-3 py-2 dark:border-slate-800/80">
+      <div className="border-border flex shrink-0 items-center gap-1.5 border-b px-3 py-2">
         <div className="min-w-0 flex-1">
           <WorkspaceSwitcher />
         </div>
@@ -182,13 +185,10 @@ export const MatrixSidebar: FC<MatrixSidebarProps> = ({ onClose }) => {
 
       {/* ── New Chat (primary action) ────────────────────────────────────── */}
       <div className="shrink-0 px-3 py-2">
-        <button
-          onClick={handleCreateNewChat}
-          className="flex w-full items-center justify-center gap-2 rounded-xl bg-slate-900 px-4 py-2 text-sm font-medium text-white shadow-sm transition-colors hover:bg-slate-800 dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-slate-200"
-        >
-          <IconPlus size={16} />
+        <Button onClick={handleCreateNewChat} className="h-9 w-full gap-2">
+          <IconPlus />
           <span>New Chat</span>
-        </button>
+        </Button>
       </div>
 
       {/* ── Scrollable Accordion Sections ────────────────────────────────── */}
@@ -204,7 +204,7 @@ export const MatrixSidebar: FC<MatrixSidebarProps> = ({ onClose }) => {
             <div
               key={section.type}
               className={cn(
-                "border-b border-slate-100 dark:border-slate-800/50",
+                "border-border/70 border-b",
                 isOpen && "flex min-h-0 flex-1 flex-col"
               )}
             >
@@ -212,10 +212,10 @@ export const MatrixSidebar: FC<MatrixSidebarProps> = ({ onClose }) => {
               <button
                 onClick={() => toggleSection(section.type)}
                 className={cn(
-                  "flex w-full items-center gap-2 px-3 py-2.5 text-left text-xs font-semibold uppercase tracking-wider transition-colors",
+                  "focus-visible:ring-ring flex min-h-9 w-full items-center gap-2 px-3 py-1.5 text-left text-xs font-semibold uppercase tracking-wider transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset",
                   isOpen
-                    ? "bg-slate-100/60 text-slate-800 dark:bg-slate-800/30 dark:text-slate-200"
-                    : "text-slate-500 hover:bg-slate-100/50 hover:text-slate-700 dark:text-slate-400 dark:hover:bg-slate-800/20 dark:hover:text-slate-300"
+                    ? "bg-muted text-foreground"
+                    : "text-muted-foreground hover:bg-muted/70 hover:text-foreground"
                 )}
               >
                 <IconChevronRight
@@ -228,7 +228,7 @@ export const MatrixSidebar: FC<MatrixSidebarProps> = ({ onClose }) => {
                 <SectionIcon size={16} className="shrink-0" />
                 <span className="flex-1">{section.label}</span>
                 {count > 0 && (
-                  <span className="rounded-full bg-slate-200/80 px-1.5 py-0.5 text-[10px] font-medium tabular-nums text-slate-600 dark:bg-slate-700 dark:text-slate-400">
+                  <span className="bg-muted text-muted-foreground rounded-full px-1.5 py-0.5 text-xs font-medium tabular-nums">
                     {count}
                   </span>
                 )}
@@ -270,10 +270,10 @@ export const MatrixSidebar: FC<MatrixSidebarProps> = ({ onClose }) => {
       </div>
 
       {/* ── Footer: User Profile Pill + Settings ─────────────────────────── */}
-      <div className="mt-auto shrink-0 border-t border-slate-200/80 p-3 dark:border-slate-800/80">
-        <div className="flex items-center justify-between rounded-2xl bg-white p-2 shadow-sm dark:border dark:border-slate-800 dark:bg-slate-900/80">
+      <div className="border-border mt-auto shrink-0 border-t p-3">
+        <div className="border-border bg-card flex items-center justify-between rounded-md border p-2 shadow-sm">
           <div className="flex min-w-0 items-center gap-2.5">
-            <div className="flex size-9 shrink-0 items-center justify-center rounded-full border border-slate-200 bg-slate-100 dark:border-slate-700 dark:bg-slate-800">
+            <div className="bg-muted flex size-9 shrink-0 items-center justify-center overflow-hidden rounded-full">
               {profile?.image_url ? (
                 <Image
                   src={profile.image_url}
@@ -283,17 +283,14 @@ export const MatrixSidebar: FC<MatrixSidebarProps> = ({ onClose }) => {
                   className="rounded-full object-cover"
                 />
               ) : (
-                <IconUser
-                  size={18}
-                  className="text-slate-600 dark:text-slate-400"
-                />
+                <IconUser className="text-muted-foreground" />
               )}
             </div>
             <div className="min-w-0">
-              <div className="truncate text-xs font-semibold text-slate-900 dark:text-slate-100">
+              <div className="text-foreground truncate text-xs font-semibold">
                 {profile?.display_name || profile?.username || "User"}
               </div>
-              <div className="truncate text-[10px] text-slate-500 dark:text-slate-400">
+              <div className="text-muted-foreground truncate text-xs">
                 Matrix AI Workspace
               </div>
             </div>
