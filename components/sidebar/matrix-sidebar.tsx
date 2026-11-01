@@ -3,156 +3,44 @@
 import { useChatHandler } from "@/components/chat/chat-hooks/use-chat-handler"
 import { ProfileSettings } from "@/components/utility/profile-settings"
 import { WorkspaceSwitcher } from "@/components/utility/workspace-switcher"
-import { WorkspaceSettings } from "@/components/workspace/workspace-settings"
 import { ChatbotUIContext } from "@/context/context"
-import { searchMessageChatIdsByWorkspace } from "@/db/messages"
-import { cn } from "@/lib/utils"
-import { ContentType } from "@/types"
-import {
-  IconAdjustmentsHorizontal,
-  IconBolt,
-  IconBooks,
-  IconChevronRight,
-  IconCube,
-  IconFile,
-  IconLayoutSidebar,
-  IconMessage,
-  IconPencil,
-  IconPlus,
-  IconRobot,
-  IconUser
-} from "@tabler/icons-react"
+import { IconLayoutSidebar, IconMessage, IconPlus } from "@tabler/icons-react"
 import Image from "next/image"
 import { useRouter } from "next/navigation"
-import { FC, useContext, useEffect, useState } from "react"
+import { FC, useContext, useState } from "react"
 import { Button } from "../ui/button"
-import { SidebarCreateButtons } from "./sidebar-create-buttons"
 import { SidebarDataList } from "./sidebar-data-list"
 import { SidebarSearch } from "./sidebar-search"
-import { toast } from "sonner"
-
-// ─── Section definitions ────────────────────────────────────────────────────
-
-interface SectionDef {
-  type: ContentType
-  label: string
-  icon: typeof IconMessage
-}
-
-const SECTIONS: SectionDef[] = [
-  { type: "chats", label: "Chats", icon: IconMessage },
-  { type: "prompts", label: "Prompts", icon: IconPencil },
-  { type: "presets", label: "Presets", icon: IconAdjustmentsHorizontal },
-  { type: "files", label: "Files", icon: IconFile },
-  { type: "collections", label: "Collections", icon: IconBooks },
-  { type: "assistants", label: "Assistants", icon: IconRobot },
-  { type: "tools", label: "Tools", icon: IconBolt },
-  { type: "models", label: "Models", icon: IconCube }
-]
-
-// ─── Component ──────────────────────────────────────────────────────────────
 
 interface MatrixSidebarProps {
   onClose?: () => void
 }
 
+const RECENT_CHAT_LIMIT = 10
+
 export const MatrixSidebar: FC<MatrixSidebarProps> = ({ onClose }) => {
   const router = useRouter()
-
-  const {
-    chats,
-    presets,
-    prompts,
-    files,
-    collections,
-    assistants,
-    tools,
-    models,
-    folders,
-    profile,
-    selectedWorkspace,
-    setShowSidebar
-  } = useContext(ChatbotUIContext)
+  const { chats, folders, selectedWorkspace, setShowSidebar } =
+    useContext(ChatbotUIContext)
 
   const { handleNewChat } = useChatHandler()
+  const [searchTerm, setSearchTerm] = useState("")
+  const [showAllChats, setShowAllChats] = useState(false)
 
-  // Which accordion section is open (null = all collapsed)
-  const [openSection, setOpenSection] = useState<ContentType | null>("chats")
-
-  // Per-section search terms (preserved while sidebar is mounted)
-  const [searchTerms, setSearchTerms] = useState<Record<string, string>>({})
-  const [messageMatchIds, setMessageMatchIds] = useState<string[]>([])
-  const [isSearchingMessages, setIsSearchingMessages] = useState(false)
-  const selectedWorkspaceId = selectedWorkspace?.id
-
-  useEffect(() => {
-    const searchTerm = searchTerms.chats?.trim()
-
-    if (!searchTerm || !selectedWorkspaceId) {
-      setMessageMatchIds([])
-      setIsSearchingMessages(false)
-      return
-    }
-
-    let cancelled = false
-    const timeoutId = window.setTimeout(async () => {
-      setIsSearchingMessages(true)
-
-      try {
-        const chatIds = await searchMessageChatIdsByWorkspace(
-          selectedWorkspaceId,
-          searchTerm
-        )
-
-        if (!cancelled) setMessageMatchIds(chatIds)
-      } catch (error) {
-        if (!cancelled) {
-          setMessageMatchIds([])
-          toast.error(
-            error instanceof Error
-              ? error.message
-              : "Could not search chat messages."
-          )
-        }
-      } finally {
-        if (!cancelled) setIsSearchingMessages(false)
-      }
-    }, 250)
-
-    return () => {
-      cancelled = true
-      window.clearTimeout(timeoutId)
-    }
-  }, [searchTerms.chats, selectedWorkspaceId])
-
-  // ── Data & folder lookup maps ─────────────────────────────────────────────
-  const dataMap: Record<ContentType, any[]> = {
-    chats,
-    presets,
-    prompts,
-    files,
-    collections,
-    assistants,
-    tools,
-    models
-  }
-
-  const folderMap: Record<ContentType, any[]> = {
-    chats: folders.filter(f => f.type === "chats"),
-    presets: folders.filter(f => f.type === "presets"),
-    prompts: folders.filter(f => f.type === "prompts"),
-    files: folders.filter(f => f.type === "files"),
-    collections: folders.filter(f => f.type === "collections"),
-    assistants: folders.filter(f => f.type === "assistants"),
-    tools: folders.filter(f => f.type === "tools"),
-    models: folders.filter(f => f.type === "models")
-  }
-
-  // ── Handlers ──────────────────────────────────────────────────────────────
-
-  const toggleSection = (type: ContentType) => {
-    setOpenSection(prev => (prev === type ? null : type))
-  }
+  const chatFolders = folders.filter(folder => folder.type === "chats")
+  const normalizedSearch = searchTerm.trim().toLowerCase()
+  const matchingChats = chats.filter(chat =>
+    chat.name.toLowerCase().includes(normalizedSearch)
+  )
+  const sortedChats = [...matchingChats].sort(
+    (first, second) =>
+      new Date(second.updated_at || second.created_at).getTime() -
+      new Date(first.updated_at || first.created_at).getTime()
+  )
+  const displayedChats =
+    showAllChats || normalizedSearch
+      ? sortedChats
+      : sortedChats.slice(0, RECENT_CHAT_LIMIT)
 
   const closeOnMobileNavigation = () => {
     if (window.innerWidth >= 1024) return
@@ -176,30 +64,18 @@ export const MatrixSidebar: FC<MatrixSidebarProps> = ({ onClose }) => {
     closeOnMobileNavigation()
   }
 
-  const updateSearchTerm = (type: ContentType, term: string) => {
-    setSearchTerms(prev => ({ ...prev, [type]: term }))
-  }
-
-  const getFilteredData = (type: ContentType) => {
-    const term = (searchTerms[type] || "").toLowerCase()
-    const data = dataMap[type]
-    if (!term) return data
-    if (type === "chats") {
-      const messageMatchIdsSet = new Set(messageMatchIds)
-      return data.filter(
-        (item: any) =>
-          item.name.toLowerCase().includes(term) ||
-          messageMatchIdsSet.has(item.id)
-      )
+  const updateSidebarVisibility = (visible: boolean) => {
+    if (onClose && !visible) {
+      onClose()
+      return
     }
-    return data.filter((item: any) => item.name.toLowerCase().includes(term))
-  }
 
-  // ── Render ────────────────────────────────────────────────────────────────
+    setShowSidebar(visible)
+    localStorage.setItem("showSidebar", String(visible))
+  }
 
   return (
     <aside className="border-border bg-background text-foreground relative flex h-full w-[280px] shrink-0 flex-col border-r transition-colors">
-      {/* ── Top Header: Brand + Collapse ─────────────────────────────────── */}
       <div className="border-border flex h-14 shrink-0 items-center justify-between border-b px-4">
         <button
           type="button"
@@ -230,150 +106,75 @@ export const MatrixSidebar: FC<MatrixSidebarProps> = ({ onClose }) => {
           </span>
         </button>
 
-        <button
-          onClick={() => {
-            if (onClose) {
-              onClose()
-            } else {
-              setShowSidebar(false)
-              localStorage.setItem("showSidebar", "false")
-            }
-          }}
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
           aria-label="Collapse sidebar"
-          className="text-muted-foreground hover:bg-accent hover:text-accent-foreground focus-visible:ring-ring flex size-9 items-center justify-center rounded-md transition-colors focus-visible:outline-none focus-visible:ring-2"
+          className="text-muted-foreground hover:bg-accent hover:text-accent-foreground focus-visible:ring-ring size-9"
+          onClick={() => updateSidebarVisibility(false)}
         >
           <IconLayoutSidebar size={18} />
-        </button>
-      </div>
-
-      {/* ── Workspace Switcher + Settings ────────────────────────────────── */}
-      <div className="border-border flex shrink-0 items-center gap-1.5 border-b px-3 py-2">
-        <div className="min-w-0 flex-1">
-          <WorkspaceSwitcher onNavigate={closeOnMobileNavigation} />
-        </div>
-        <WorkspaceSettings />
-      </div>
-
-      {/* ── New Chat (primary action) ────────────────────────────────────── */}
-      <div className="shrink-0 px-3 py-2">
-        <Button onClick={handleCreateNewChat} className="h-9 w-full gap-2">
-          <IconPlus />
-          <span>New Chat</span>
         </Button>
       </div>
 
-      {/* ── Scrollable Accordion Sections ────────────────────────────────── */}
-      <div className="flex flex-1 flex-col overflow-y-auto">
-        {SECTIONS.map(section => {
-          const isOpen = openSection === section.type
-          const SectionIcon = section.icon
-          const data = dataMap[section.type]
-          const sectionFolders = folderMap[section.type]
-          const count = data.length
-
-          return (
-            <div
-              key={section.type}
-              className={cn(
-                "border-border/70 border-b",
-                isOpen && "flex min-h-0 flex-1 flex-col"
-              )}
-            >
-              {/* Section Header (toggle) */}
-              <button
-                onClick={() => toggleSection(section.type)}
-                className={cn(
-                  "focus-visible:ring-ring flex min-h-9 w-full items-center gap-2 px-3 py-1.5 text-left text-xs font-semibold uppercase tracking-wider transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset",
-                  isOpen
-                    ? "bg-muted text-foreground"
-                    : "text-muted-foreground hover:bg-muted/70 hover:text-foreground"
-                )}
-              >
-                <IconChevronRight
-                  size={14}
-                  className={cn(
-                    "shrink-0 transition-transform duration-200",
-                    isOpen && "rotate-90"
-                  )}
-                />
-                <SectionIcon size={16} className="shrink-0" />
-                <span className="flex-1">{section.label}</span>
-                {count > 0 && (
-                  <span className="bg-muted text-muted-foreground rounded-full px-1.5 py-0.5 text-xs font-medium tabular-nums">
-                    {count}
-                  </span>
-                )}
-              </button>
-
-              {/* Section Body (expanded) */}
-              {isOpen && (
-                <div className="flex min-h-0 flex-1 flex-col px-2 pb-2">
-                  {/* Create Buttons: "New [Type]" + "New Folder" */}
-                  <div className="mt-1 flex items-center">
-                    <SidebarCreateButtons contentType={section.type} />
-                  </div>
-
-                  {/* Search */}
-                  <div className="mt-2">
-                    <SidebarSearch
-                      contentType={section.type}
-                      searchTerm={searchTerms[section.type] || ""}
-                      setSearchTerm={(term: string) =>
-                        updateSearchTerm(section.type, term)
-                      }
-                    />
-                  </div>
-
-                  {/* Data List (folders, items, drag-drop, date grouping) */}
-                  <SidebarDataList
-                    contentType={section.type}
-                    data={getFilteredData(section.type)}
-                    allData={data}
-                    folders={sectionFolders}
-                    onNavigate={closeOnMobileNavigation}
-                    searchTerm={searchTerms[section.type] || ""}
-                    isSearching={
-                      section.type === "chats" && isSearchingMessages
-                    }
-                  />
-                </div>
-              )}
-            </div>
-          )
-        })}
+      <div className="shrink-0 space-y-2 p-3">
+        <Button
+          type="button"
+          onClick={handleCreateNewChat}
+          className="h-9 w-full gap-2"
+        >
+          <IconPlus size={16} />
+          New Chat
+        </Button>
+        <SidebarSearch
+          contentType="chats"
+          searchTerm={searchTerm}
+          setSearchTerm={setSearchTerm}
+        />
       </div>
 
-      {/* ── Footer: User Profile Pill + Settings ─────────────────────────── */}
-      <div className="border-border mt-auto shrink-0 border-t p-3">
-        <div className="border-border bg-card flex items-center justify-between rounded-md border p-2 shadow-sm">
-          <div className="flex min-w-0 items-center gap-2.5">
-            <div className="bg-muted flex size-9 shrink-0 items-center justify-center overflow-hidden rounded-full">
-              {profile?.image_url ? (
-                <Image
-                  src={profile.image_url}
-                  alt={profile.display_name || "User"}
-                  width={34}
-                  height={34}
-                  className="rounded-full object-cover"
-                />
-              ) : (
-                <IconUser className="text-muted-foreground" />
-              )}
-            </div>
-            <div className="min-w-0">
-              <div className="text-foreground truncate text-xs font-semibold">
-                {profile?.display_name || profile?.username || "User"}
-              </div>
-              <div className="text-muted-foreground truncate text-xs">
-                Matrix AI Workspace
-              </div>
-            </div>
-          </div>
-
-          <div className="shrink-0">
-            <ProfileSettings />
-          </div>
+      <div className="border-border flex shrink-0 items-center gap-1.5 border-y px-3 py-2">
+        <div className="min-w-0 flex-1">
+          <WorkspaceSwitcher onNavigate={closeOnMobileNavigation} />
         </div>
+      </div>
+
+      <section
+        aria-label="Recent chats"
+        className="flex min-h-0 flex-1 flex-col overflow-hidden"
+      >
+        <div className="flex shrink-0 items-center justify-between px-4 pb-1 pt-3">
+          <h2 className="text-muted-foreground flex items-center gap-2 text-xs font-semibold uppercase tracking-wide">
+            <IconMessage size={15} />
+            Recents
+          </h2>
+          {!normalizedSearch && chats.length > RECENT_CHAT_LIMIT && (
+            <Button
+              type="button"
+              variant="link"
+              size="sm"
+              className="h-8 px-1 text-xs"
+              onClick={() => setShowAllChats(value => !value)}
+            >
+              {showAllChats ? "Show recent" : "View all"}
+            </Button>
+          )}
+        </div>
+        <div className="min-h-0 flex-1 overflow-y-auto px-2 pb-2">
+          <SidebarDataList
+            contentType="chats"
+            data={displayedChats}
+            allData={chats}
+            folders={chatFolders}
+            onNavigate={closeOnMobileNavigation}
+            searchTerm={normalizedSearch}
+          />
+        </div>
+      </section>
+
+      <div className="border-border mt-auto shrink-0 border-t p-2">
+        <ProfileSettings />
       </div>
     </aside>
   )

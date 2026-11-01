@@ -120,15 +120,15 @@ export const SidebarDataList: FC<SidebarDataListProps> = ({
 
   const getSortedData = (
     data: any,
-    dateCategory: "Today" | "Yesterday" | "Previous Week" | "Older"
+    dateCategory: "Today" | "Yesterday" | "Previous 7 days" | "Older"
   ) => {
     const now = new Date()
     const todayStart = new Date(now.setHours(0, 0, 0, 0))
     const yesterdayStart = new Date(
       new Date().setDate(todayStart.getDate() - 1)
     )
-    const oneWeekAgoStart = new Date(
-      new Date().setDate(todayStart.getDate() - 7)
+    const previousSevenDaysStart = new Date(
+      new Date().setDate(todayStart.getDate() - 8)
     )
 
     return data
@@ -139,10 +139,12 @@ export const SidebarDataList: FC<SidebarDataListProps> = ({
             return itemDate >= todayStart
           case "Yesterday":
             return itemDate >= yesterdayStart && itemDate < todayStart
-          case "Previous Week":
-            return itemDate >= oneWeekAgoStart && itemDate < yesterdayStart
+          case "Previous 7 days":
+            return (
+              itemDate >= previousSevenDaysStart && itemDate < yesterdayStart
+            )
           case "Older":
-            return itemDate < oneWeekAgoStart
+            return itemDate < previousSevenDaysStart
           default:
             return true
         }
@@ -309,7 +311,7 @@ export const SidebarDataList: FC<SidebarDataListProps> = ({
               {searchTerm
                 ? isSearching
                   ? "Searching messages…"
-                  : `No matches for "${searchTerm}".`
+                  : `No matches for ${searchTerm}`
                 : `No ${contentType}.`}
             </div>
           </div>
@@ -338,14 +340,14 @@ export const SidebarDataList: FC<SidebarDataListProps> = ({
 
             {contentType === "chats" ? (
               <>
-                {["Today", "Yesterday", "Previous Week", "Older"].map(
+                {["Today", "Yesterday", "Previous 7 days", "Older"].map(
                   dateCategory => {
                     const sortedData = getSortedData(
                       dataWithoutFolders,
                       dateCategory as
                         | "Today"
                         | "Yesterday"
-                        | "Previous Week"
+                        | "Previous 7 days"
                         | "Older"
                     )
 
