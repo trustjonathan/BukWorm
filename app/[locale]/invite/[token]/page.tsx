@@ -10,7 +10,7 @@ import { supabase } from "@/lib/supabase/browser-client"
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { useContext, useEffect, useState } from "react"
+import { useCallback, useContext, useEffect, useRef, useState } from "react"
 import { toast } from "sonner"
 
 interface WorkspaceInvitePageProps {
@@ -18,10 +18,14 @@ interface WorkspaceInvitePageProps {
     locale: string
     token: string
   }
+  searchParams?: {
+    accept?: string
+  }
 }
 
 export default function WorkspaceInvitePage({
-  params
+  params,
+  searchParams
 }: WorkspaceInvitePageProps) {
   const { setSelectedWorkspace, setWorkspaces, setWorkspaceRoles } =
     useContext(ChatbotUIContext)
@@ -29,8 +33,7 @@ export default function WorkspaceInvitePage({
   const [signedIn, setSignedIn] = useState(false)
   const [checkingSession, setCheckingSession] = useState(true)
   const [accepting, setAccepting] = useState(false)
-  const [accepted, setAccepted] = useState(false)
-  const [acceptedWorkspaceId, setAcceptedWorkspaceId] = useState("")
+  const autoAcceptStarted = useRef<string | null>(null)
   const invitePath = `/${params.locale}/invite/${encodeURIComponent(params.token)}`
 
   useEffect(() => {
@@ -58,7 +61,7 @@ export default function WorkspaceInvitePage({
     }
   }, [])
 
-  const handleAccept = async () => {
+  const handleAccept = useCallback(async () => {
     setAccepting(true)
     try {
       const workspaceId = await acceptWorkspaceInvite(params.token)
@@ -75,9 +78,8 @@ export default function WorkspaceInvitePage({
       ])
       setWorkspaceRoles(current => ({ ...current, [workspace.id]: role }))
       setSelectedWorkspace(workspace)
-      setAcceptedWorkspaceId(workspace.id)
-      setAccepted(true)
       toast.success("You joined the workspace.")
+      router.replace(`/${params.locale}/${workspace.id}/chat`)
     } catch (error) {
       toast.error(
         error instanceof Error
@@ -87,7 +89,32 @@ export default function WorkspaceInvitePage({
     } finally {
       setAccepting(false)
     }
-  }
+  }, [
+    params.locale,
+    params.token,
+    router,
+    setSelectedWorkspace,
+    setWorkspaceRoles,
+    setWorkspaces
+  ])
+
+  useEffect(() => {
+    if (
+      !checkingSession &&
+      signedIn &&
+      searchParams?.accept === "1" &&
+      autoAcceptStarted.current !== params.token
+    ) {
+      autoAcceptStarted.current = params.token
+      void handleAccept()
+    }
+  }, [
+    checkingSession,
+    handleAccept,
+    params.token,
+    searchParams?.accept,
+    signedIn
+  ])
 
   if (checkingSession) {
     return (
@@ -101,26 +128,20 @@ export default function WorkspaceInvitePage({
     <main className="mx-auto flex min-h-screen max-w-lg flex-col justify-center gap-4 px-6">
       <h1 className="text-2xl font-semibold">Workspace invitation</h1>
       <p className="text-muted-foreground text-sm">
-        {accepted
-          ? "You now have access to this shared workspace."
+        {accepting
+          ? "Accepting your invitation and opening the workspace…"
           : "This is a single-use invitation. It expires seven days after it was created."}
       </p>
 
       {!signedIn ? (
         <Button asChild>
           <Link
-            href={`/${params.locale}/login?next=${encodeURIComponent(invitePath)}`}
+            href={`/${params.locale}/login?next=${encodeURIComponent(
+              `${invitePath}?accept=1`
+            )}`}
           >
             Sign in to accept
           </Link>
-        </Button>
-      ) : accepted ? (
-        <Button
-          onClick={() =>
-            router.push(`/${params.locale}/${acceptedWorkspaceId}/chat`)
-          }
-        >
-          Open workspace
         </Button>
       ) : (
         <Button disabled={accepting} onClick={() => void handleAccept()}>
