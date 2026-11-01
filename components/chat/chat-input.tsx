@@ -54,7 +54,9 @@ export const ChatInput: FC<ChatInputProps> = ({}) => {
     selectedTools,
     setSelectedTools,
     assistantImages,
-    isTemporaryChat
+    isTemporaryChat,
+    selectedWorkspace,
+    workspaceRoles
   } = useContext(ChatbotUIContext)
 
   const {
@@ -74,6 +76,9 @@ export const ChatInput: FC<ChatInputProps> = ({}) => {
   } = useChatHistoryHandler()
 
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const isWorkspaceViewer =
+    selectedWorkspace?.sharing === "shared" &&
+    workspaceRoles[selectedWorkspace.id] === "viewer"
 
   useEffect(() => {
     setTimeout(() => {
@@ -162,6 +167,14 @@ export const ChatInput: FC<ChatInputProps> = ({}) => {
     if (files.length > 0) void handleSelectDeviceFiles(files)
   }
 
+  if (isWorkspaceViewer) {
+    return (
+      <div className="text-muted-foreground border-border bg-card mt-3 rounded-xl border p-4 text-center text-sm">
+        You have read-only access to this workspace.
+      </div>
+    )
+  }
+
   return (
     <>
       <div className="flex flex-col flex-wrap justify-center gap-2">
@@ -188,7 +201,7 @@ export const ChatInput: FC<ChatInputProps> = ({}) => {
             </div>
           ))}
 
-        {selectedAssistant && (
+        {selectedAssistant && selectedWorkspace?.sharing !== "shared" && (
           <div className="border-primary mx-auto flex w-fit items-center space-x-2 rounded-lg border p-1.5">
             {selectedAssistant.image_path && (
               <Image
@@ -251,7 +264,9 @@ export const ChatInput: FC<ChatInputProps> = ({}) => {
           placeholder={
             isTemporaryChat
               ? "Temporary chat — messages are not saved"
-              : t("Ask Matrix anything... (starts a new thread)")
+              : selectedWorkspace?.sharing === "shared"
+                ? "Message the group. Mention @Matrix to get an AI response."
+                : t("Ask Matrix anything... (starts a new thread)")
           }
           onValueChange={handleInputChange}
           value={userInput}

@@ -17,10 +17,10 @@ export interface NexusAgent {
 export const NEXUS_AGENTS: NexusAgent[] = [
   {
     id: "gemini",
-    name: "Gemini",
+    name: "Matrix",
     provider: "google",
     role: "Research & synthesis",
-    aliases: ["gemini"],
+    aliases: ["matrix"],
     preferredModel: DEFAULT_GOOGLE_MODEL_ID,
     instructions:
       "Use the complete conversation history, answer the latest request, and build on earlier messages when relevant. Do not claim to have searched the web unless a search tool was actually used.",
@@ -30,7 +30,7 @@ export const NEXUS_AGENTS: NexusAgent[] = [
 
 export const getMentionedNexusAgents = (message: string): NexusAgentId[] => {
   const mentioned = new Set<NexusAgentId>()
-  const mentionPattern = /(?:^|\s)@gemini\b/gi
+  const mentionPattern = /(?:^|[^\w])@(matrix)\b/gi
   let match: RegExpExecArray | null
 
   while ((match = mentionPattern.exec(message)) !== null) {
@@ -53,6 +53,6 @@ export const getNexusAgentModel = (agent: NexusAgent, availableModels: LLM[]) =>
 
 export const stripNexusAgentMentions = (message: string) =>
   message
-    .replace(/(^|\s)@gemini\b/gi, "$1")
+    .replace(/(^|[^\w])@matrix\b/gi, "$1")
     .replace(/\s{2,}/g, " ")
     .trim()

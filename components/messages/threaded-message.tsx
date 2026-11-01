@@ -16,6 +16,7 @@ import {
   IconCopy,
   IconEdit,
   IconFileText,
+  IconHeart,
   IconMessage,
   IconMoodSmile,
   IconPencil,
@@ -46,6 +47,9 @@ interface ThreadedMessageProps {
   onSubmitEdit: (value: string, sequenceNumber: number) => void
   onRegenerate: (ancestorChain: Tables<"messages">[]) => void
   editingMessageId?: string
+  canInteract: boolean
+  messageLikes: Tables<"message_likes">[]
+  onToggleLike: (messageId: string) => void
 }
 
 export const ThreadedMessage: FC<ThreadedMessageProps> = ({
@@ -57,7 +61,10 @@ export const ThreadedMessage: FC<ThreadedMessageProps> = ({
   onCancelEdit,
   onSubmitEdit,
   onRegenerate,
-  editingMessageId
+  editingMessageId,
+  canInteract,
+  messageLikes,
+  onToggleLike
 }) => {
   const {
     profile,
@@ -71,7 +78,8 @@ export const ThreadedMessage: FC<ThreadedMessageProps> = ({
     chatImages,
     toolInUse,
     files,
-    models
+    models,
+    workspaceMembers
   } = useContext(ChatbotUIContext)
 
   const { chatMessage, children } = node
@@ -96,13 +104,27 @@ export const ThreadedMessage: FC<ThreadedMessageProps> = ({
   const isEditing = editingMessageId === message.id
   const isAssistant = message.role === "assistant"
   const isSystem = message.role === "system"
+  const author = workspaceMembers.find(
+    member => member.member_user_id === message.user_id
+  )
+  const authorName =
+    author?.display_name ||
+    author?.username ||
+    (message.user_id === profile?.user_id
+      ? profile?.display_name || profile?.username
+      : undefined) ||
+    "Workspace member"
+  const authorImage =
+    author?.image_url ||
+    (message.user_id === profile?.user_id ? profile?.image_url : null)
+  const likes = messageLikes.filter(like => like.message_id === message.id)
+  const isLiked = likes.some(like => like.user_id === profile?.user_id)
   const isLastAndGenerating =
     isGenerating && !firstTokenReceived && children.length === 0 && isAssistant
 
   // ── Swipe Event Handlers ──────────────────────────────────────────────────
   const handlePointerDown = (e: React.PointerEvent) => {
-    // Swipe-to-reply is active on agent messages
-    if (!isAssistant || isEditing || isGenerating) return
+    if (!canInteract || isSystem || isEditing || isGenerating) return
 
     const target = e.target as HTMLElement
     // Ignore drag start if touching interactive elements like links, buttons, codeblocks
@@ -281,10 +303,10 @@ export const ThreadedMessage: FC<ThreadedMessageProps> = ({
                   />
                 </div>
               )
-            ) : profile?.image_url ? (
+            ) : authorImage ? (
               <Image
-                src={profile.image_url}
-                alt="user"
+                src={authorImage}
+                alt={authorName}
                 height={ICON_SIZE}
                 width={ICON_SIZE}
                 className="rounded-full object-cover"
@@ -316,9 +338,9 @@ export const ThreadedMessage: FC<ThreadedMessageProps> = ({
                       ? assistants.find(a => a.id === message.assistant_id)
                           ?.name ?? "Matrix AI"
                       : "Matrix AI"
-                    : profile?.display_name ?? profile?.username ?? "You"}
+                    : authorName}
                 </span>
-                {isAssistant && (
+                {canInteract && !isSystem && (
                   <span className="rounded border border-cyan-300 bg-cyan-50 px-1.5 py-0.5 font-sans text-xs text-cyan-700 dark:border-cyan-800 dark:bg-cyan-950 dark:text-cyan-400">
                     MATRIX NODE
                   </span>
@@ -356,7 +378,9 @@ export const ThreadedMessage: FC<ThreadedMessageProps> = ({
             <div
               className={cn(
                 "relative z-[1] select-none rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm leading-relaxed text-slate-800 shadow-sm transition-transform dark:border-slate-800/80 dark:bg-slate-900/60 dark:text-slate-100",
-                isAssistant && "cursor-grab touch-pan-y active:cursor-grabbing"
+                canInteract &&
+                  !isSystem &&
+                  "cursor-grab touch-pan-y active:cursor-grabbing"
               )}
               style={{
                 transform: `translateX(${swipeOffset}px)`,
@@ -430,22 +454,6 @@ export const ThreadedMessage: FC<ThreadedMessageProps> = ({
                   </>
                 ) : (
                   <>
-                    {/* Reply in-thread button (for desktop click or swipe affordance) */}
-                    {isAssistant && !isGenerating && (
-                      <WithTooltip
-                        side="top"
-                        delayDuration={600}
-                        display={<div>Reply in thread (or swipe left)</div>}
-                        trigger={
-                          <IconArrowBackUp
-                            size={15}
-                            className="cursor-pointer text-slate-400 transition-colors hover:text-cyan-400"
-                            onClick={() => setIsReplying(r => !r)}
-                          />
-                        }
-                      />
-                    )}
-
                     {/* Copy */}
                     <WithTooltip
                       side="top"
@@ -465,7 +473,7 @@ export const ThreadedMessage: FC<ThreadedMessageProps> = ({
                     />
 
                     {/* Edit (user only) */}
-                    {!isAssistant && !isSystem && (
+                    {canInteract && !isAssistant && !isSystem && (
                       <WithTooltip
                         side="top"
                         delayDuration={600}
@@ -481,7 +489,7 @@ export const ThreadedMessage: FC<ThreadedMessageProps> = ({
                     )}
 
                     {/* Regenerate (last assistant) */}
-                    {isAssistant && !isGenerating && (
+                    {canInteract && isAssistant && !isGenerating && (
                       <WithTooltip
                         side="top"
                         delayDuration={600}
@@ -500,6 +508,32 @@ export const ThreadedMessage: FC<ThreadedMessageProps> = ({
               </div>
             </div>
           </div>
+
+          {!isSystem && canInteract && (
+            <div className="-mt-2 mb-2 flex items-center gap-4">
+              <button
+                type="button"
+                aria-label={`${isLiked ? "Unlike" : "Like"} message (${likes.length})`}
+                className={cn(
+                  "flex items-center gap-1 text-xs text-slate-500 transition-colors hover:text-rose-500",
+                  isLiked && "text-rose-500"
+                )}
+                onClick={() => onToggleLike(message.id)}
+              >
+                <IconHeart size={15} fill={isLiked ? "currentColor" : "none"} />
+                {likes.length > 0 ? likes.length : "Like"}
+              </button>
+              <button
+                type="button"
+                aria-label="Reply in thread"
+                className="flex items-center gap-1 text-xs text-slate-500 transition-colors hover:text-cyan-500"
+                onClick={() => setIsReplying(replying => !replying)}
+              >
+                <IconArrowBackUp size={15} />
+                Reply
+              </button>
+            </div>
+          )}
 
           {/* File sources section */}
           {node.chatMessage.fileItems.length > 0 && (
@@ -555,7 +589,7 @@ export const ThreadedMessage: FC<ThreadedMessageProps> = ({
           )}
 
           {/* Inline reply form (activated via swipe-left on agent message or reply action) */}
-          {isReplying && (
+          {isReplying && canInteract && (
             <form
               onSubmit={handleReplySubmit}
               className="animate-in fade-in slide-in-from-top-2 mt-3 flex flex-col gap-2 rounded-xl border border-cyan-400/50 bg-white p-3 shadow-lg shadow-cyan-900/5 duration-150 dark:border-cyan-500/40 dark:bg-slate-950/85 dark:shadow-cyan-950/30"
@@ -569,7 +603,7 @@ export const ThreadedMessage: FC<ThreadedMessageProps> = ({
                   Replying in thread to{" "}
                   {isAssistant
                     ? selectedAssistant?.name ?? "Matrix AI"
-                    : "message"}
+                    : authorName}
                 </span>
                 <button
                   type="button"
@@ -640,6 +674,9 @@ export const ThreadedMessage: FC<ThreadedMessageProps> = ({
               onSubmitEdit={onSubmitEdit}
               onRegenerate={onRegenerate}
               editingMessageId={editingMessageId}
+              canInteract={canInteract}
+              messageLikes={messageLikes}
+              onToggleLike={onToggleLike}
             />
           ))}
         </div>

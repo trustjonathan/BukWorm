@@ -429,6 +429,7 @@ export const handleCreateMessages = async (
   const finalUserMessage: TablesInsert<"messages"> & {
     parent_id?: string | null
   } = {
+    id: uuidv4(),
     chat_id: currentChat.id,
     assistant_id: null,
     user_id: profile.user_id,
@@ -440,12 +441,14 @@ export const handleCreateMessages = async (
     ...(parentId !== undefined && { parent_id: parentId })
   }
 
-  const responses = assistantResponses?.length
-    ? assistantResponses
-    : [{ modelData, generatedText }]
+  const responses =
+    assistantResponses === undefined
+      ? [{ modelData, generatedText }]
+      : assistantResponses
 
   const finalAssistantMessages: TablesInsert<"messages">[] = responses.map(
     (response, index) => ({
+      parent_id: persistedUserMessage?.id || finalUserMessage.id,
       chat_id: currentChat.id,
       assistant_id: selectedAssistant?.id || null,
       user_id: profile.user_id,
@@ -546,9 +549,20 @@ export const handleCreateMessages = async (
     })
 
     setChatMessages(currentMessages => {
+      const finalMessageKeys = new Set(
+        finalChatMessages.map(
+          item => `${item.message.role}:${item.message.sequence_number}`
+        )
+      )
       const mergedMessages = new Map(
         currentMessages
-          .filter(message => message.message.created_at !== "")
+          .filter(
+            message =>
+              message.message.created_at !== "" &&
+              !finalMessageKeys.has(
+                `${message.message.role}:${message.message.sequence_number}`
+              )
+          )
           .map(message => [message.message.id, message])
       )
 

@@ -48,6 +48,7 @@ export const useChatHandler = () => {
     setFirstTokenReceived,
     selectedChat,
     selectedWorkspace,
+    workspaceRoles,
     setSelectedChat,
     setChats,
     setSelectedTools,
@@ -211,10 +212,128 @@ export const useChatHandler = () => {
     }
   }
 
+  const handleSendGroupMessage = async (
+    messageContent: string,
+    history: ChatMessage[],
+    parentId?: string | null
+  ) => {
+    try {
+      if (!chatSettings || !profile || !selectedWorkspace) {
+        throw new Error("Chat setup is not ready. Refresh and try again.")
+      }
+
+      const modelData = [
+        ...models.map(model => ({
+          modelId: model.model_id as LLMID,
+          modelName: model.name,
+          provider: "custom" as ModelProvider,
+          hostedId: model.id,
+          platformLink: "",
+          imageInput: false
+        })),
+        ...LLM_LIST,
+        ...availableLocalModels,
+        ...availableOpenRouterModels
+      ].find(model => model.modelId === chatSettings.model)
+
+      validateChatSettings(
+        chatSettings,
+        modelData,
+        profile,
+        selectedWorkspace,
+        messageContent
+      )
+
+      const images = [...newMessageImages]
+      setUserInput("")
+
+      if (isTemporaryChat) {
+        const now = new Date().toISOString()
+        const id = uuidv4()
+        const temporaryMessage: ChatMessage["message"] = {
+          chat_id: "",
+          assistant_id: null,
+          content: messageContent,
+          created_at: now,
+          id,
+          image_paths: images.map(image => image.base64),
+          model: chatSettings.model,
+          parent_id: parentId ?? null,
+          role: "user",
+          sequence_number: history.length,
+          updated_at: now,
+          user_id: profile.user_id
+        }
+
+        setChatMessages([
+          ...history,
+          { message: temporaryMessage, fileItems: [] }
+        ])
+        setChatImages(current => [
+          ...current,
+          ...images.map(image => ({ ...image, messageId: id }))
+        ])
+        setNewMessageImages([])
+        return
+      }
+
+      setIsGenerating(true)
+      let currentChat = selectedChat ? { ...selectedChat } : null
+      if (!currentChat) {
+        currentChat = await handleCreateChat(
+          chatSettings,
+          profile,
+          selectedWorkspace,
+          messageContent,
+          null,
+          newMessageFiles,
+          setSelectedChat,
+          setChats,
+          setChatFiles
+        )
+      } else {
+        const updatedChat = await updateChat(currentChat.id, {
+          updated_at: new Date().toISOString()
+        })
+        setChats(chats =>
+          chats.map(chat => (chat.id === updatedChat.id ? updatedChat : chat))
+        )
+      }
+
+      await handleCreateMessages(
+        history,
+        currentChat,
+        profile,
+        modelData!,
+        messageContent,
+        "",
+        images,
+        false,
+        [],
+        setChatMessages,
+        setChatFileItems,
+        setChatImages,
+        selectedAssistant,
+        [],
+        chatSettings.model,
+        parentId ?? null
+      )
+      setNewMessageImages([])
+    } catch (error) {
+      setUserInput(messageContent)
+      toast.error(
+        error instanceof Error ? error.message : "Unable to send this message."
+      )
+    } finally {
+      setIsGenerating(false)
+    }
+  }
+
   const handleSendToNexusAgents = async (
     messageContent: string,
     history: ChatMessage[],
-    requestedAgentIds: NexusAgentId[]
+    requestedAgentIds: NexusAgentId[],
+    parentId?: string | null
   ) => {
     const calledAgentIds = Array.from(
       new Set([
@@ -261,6 +380,8 @@ export const useChatHandler = () => {
         modelData: LLM
       } => Boolean(request?.modelData)
     )
+    const responseAssistant =
+      selectedWorkspace?.sharing === "shared" ? null : selectedAssistant
 
     if (selectedTools.length > 0) {
       toast.error(
@@ -303,7 +424,7 @@ export const useChatHandler = () => {
         id: uuidv4(),
         image_paths: newMessageImages.map(image => image.base64),
         model: chatSettings.model,
-        parent_id: null,
+        parent_id: parentId ?? null,
         role: "user",
         sequence_number: history.length,
         updated_at: new Date().toISOString(),
@@ -377,8 +498,19 @@ export const useChatHandler = () => {
           const payload: ChatPayload = {
             chatSettings: agentSettings,
             workspaceInstructions: selectedWorkspace.instructions || "",
-            chatMessages: [...history, userMessage],
-            assistant: selectedChat?.assistant_id ? selectedAssistant : null,
+            chatMessages: [
+              ...history,
+              {
+                ...userMessage,
+                message: { ...userMessage.message, content: requestText }
+              }
+            ],
+            assistant:
+              selectedWorkspace.sharing === "shared"
+                ? null
+                : selectedChat?.assistant_id
+                  ? selectedAssistant
+                  : null,
             messageFileItems: retrievedFileItems,
             chatFileItems
           }
@@ -449,7 +581,7 @@ export const useChatHandler = () => {
           profile,
           selectedWorkspace,
           messageContent,
-          selectedAssistant,
+          responseAssistant,
           newMessageFiles,
           setSelectedChat,
           setChats,
@@ -477,12 +609,13 @@ export const useChatHandler = () => {
         setChatMessages,
         setChatFileItems,
         setChatImages,
-        selectedAssistant,
+        responseAssistant,
         completedResponses.map(({ modelData, generatedText }) => ({
           modelData,
           generatedText
         })),
-        chatSettings.model
+        chatSettings.model,
+        parentId ?? null
       )
       setSelectedNexusAgents([])
     } catch (error) {
@@ -513,6 +646,34 @@ export const useChatHandler = () => {
       return
     }
 
+    if (
+      selectedWorkspace?.sharing === "shared" &&
+      workspaceRoles[selectedWorkspace.id] === "viewer"
+    ) {
+      toast.error("You have read-only access to this workspace.")
+      return
+    }
+
+    if (selectedWorkspace?.sharing === "shared" && !isRegeneration) {
+      const mentionedAgentIds = getMentionedNexusAgents(messageContent)
+      if (mentionedAgentIds.length > 0) {
+        if (isTemporaryChat) {
+          toast.error(
+            "Matrix calls are not available in Temporary Chat. Turn off Temporary Chat to get an agent response."
+          )
+          return
+        }
+        return handleSendToNexusAgents(
+          messageContent,
+          chatMessages,
+          ["gemini"],
+          parentId
+        )
+      }
+
+      return handleSendGroupMessage(messageContent, chatMessages, parentId)
+    }
+
     if (agentIds !== undefined) {
       if (isTemporaryChat) {
         toast.error(
@@ -520,7 +681,12 @@ export const useChatHandler = () => {
         )
         return
       }
-      return handleSendToNexusAgents(messageContent, chatMessages, agentIds)
+      return handleSendToNexusAgents(
+        messageContent,
+        chatMessages,
+        agentIds,
+        parentId
+      )
     }
 
     const startingInput = messageContent

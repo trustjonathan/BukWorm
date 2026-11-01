@@ -6,7 +6,10 @@ import { ChatbotUIContext } from "@/context/context"
 import { getProfileByUserId } from "@/db/profile"
 import { getWorkspaceImageFromStorage } from "@/db/storage/workspace-images"
 import { getWorkspacesByUserId } from "@/db/workspaces"
-import { getWorkspaceRoles } from "@/db/workspace-collaboration"
+import {
+  getWorkspaceRoles,
+  WorkspaceMemberProfile
+} from "@/db/workspace-collaboration"
 import { convertBlobToBase64 } from "@/lib/blob-to-b64"
 import { DEFAULT_GOOGLE_MODEL_ID } from "@/lib/models/llm/google-llm-list"
 import { NexusAgentId } from "@/lib/chat-agents"
@@ -60,6 +63,9 @@ export const GlobalState: FC<GlobalStateProps> = ({ children }) => {
   const [workspaceRoles, setWorkspaceRoles] = useState<
     Record<string, "owner" | "admin" | "editor" | "viewer">
   >({})
+  const [workspaceMembers, setWorkspaceMembers] = useState<
+    WorkspaceMemberProfile[]
+  >([])
 
   // MODELS STORE
   const [envKeyMap, setEnvKeyMap] = useState<Record<string, VALID_ENV_KEYS>>({})
@@ -293,6 +299,8 @@ export const GlobalState: FC<GlobalStateProps> = ({ children }) => {
         setWorkspacePreferences,
         workspaceRoles,
         setWorkspaceRoles,
+        workspaceMembers,
+        setWorkspaceMembers,
 
         // MODELS STORE
         envKeyMap,

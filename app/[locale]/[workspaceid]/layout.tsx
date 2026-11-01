@@ -12,6 +12,7 @@ import { getPresetWorkspacesByWorkspaceId } from "@/db/presets"
 import { getPromptWorkspacesByWorkspaceId } from "@/db/prompts"
 import { getAssistantImageFromStorage } from "@/db/storage/assistant-images"
 import { getToolWorkspacesByWorkspaceId } from "@/db/tools"
+import { getWorkspaceMemberProfiles } from "@/db/workspace-collaboration"
 import { getWorkspaceById } from "@/db/workspaces"
 import { convertBlobToBase64 } from "@/lib/blob-to-b64"
 import { getDefaultModelId } from "@/lib/models/llm/llm-list"
@@ -62,6 +63,7 @@ export default function WorkspaceLayout({ children }: WorkspaceLayoutProps) {
     setNewMessageFiles,
     setNewMessageImages,
     setShowFilesDisplay,
+    setWorkspaceMembers,
     profile
   } = useContext(ChatbotUIContext)
 
@@ -88,7 +90,8 @@ export default function WorkspaceLayout({ children }: WorkspaceLayoutProps) {
           presetData,
           promptData,
           toolData,
-          modelData
+          modelData,
+          workspaceMembers
         ] = await Promise.all([
           getAssistantWorkspacesByWorkspaceId(workspaceId),
           getChatsByWorkspaceId(workspaceId),
@@ -98,7 +101,10 @@ export default function WorkspaceLayout({ children }: WorkspaceLayoutProps) {
           getPresetWorkspacesByWorkspaceId(workspaceId),
           getPromptWorkspacesByWorkspaceId(workspaceId),
           getToolWorkspacesByWorkspaceId(workspaceId),
-          getModelWorkspacesByWorkspaceId(workspaceId)
+          getModelWorkspacesByWorkspaceId(workspaceId),
+          workspace.sharing === "shared"
+            ? getWorkspaceMemberProfiles(workspaceId)
+            : Promise.resolve([])
         ])
 
         const assistantImages = await Promise.all(
@@ -147,6 +153,7 @@ export default function WorkspaceLayout({ children }: WorkspaceLayoutProps) {
         setPrompts(promptData.prompts)
         setTools(toolData.tools)
         setModels(modelData.models)
+        setWorkspaceMembers(workspaceMembers)
         setChatSettings({
           model: getDefaultModelId(
             accountDefaultModel.current || workspace.default_model
@@ -187,7 +194,8 @@ export default function WorkspaceLayout({ children }: WorkspaceLayoutProps) {
       setPresets,
       setPrompts,
       setSelectedWorkspace,
-      setTools
+      setTools,
+      setWorkspaceMembers
     ]
   )
 
@@ -204,6 +212,7 @@ export default function WorkspaceLayout({ children }: WorkspaceLayoutProps) {
     setNewMessageFiles([])
     setNewMessageImages([])
     setShowFilesDisplay(false)
+    setWorkspaceMembers([])
 
     const loadWorkspace = async () => {
       try {
@@ -243,6 +252,7 @@ export default function WorkspaceLayout({ children }: WorkspaceLayoutProps) {
     setNewMessageImages,
     setSelectedChat,
     setShowFilesDisplay,
+    setWorkspaceMembers,
     setUserInput,
     workspaceId
   ])

@@ -10,6 +10,7 @@ import {
 } from "@/types"
 import { AssistantImage } from "@/types/images/assistant-image"
 import { VALID_ENV_KEYS } from "@/types/valid-keys"
+import { WorkspaceMemberProfile } from "@/db/workspace-collaboration"
 import { NexusAgentId } from "@/lib/chat-agents"
 import { Dispatch, SetStateAction, createContext } from "react"
 
@@ -58,6 +59,8 @@ interface ChatbotUIContext {
   setWorkspaceRoles: Dispatch<
     SetStateAction<Record<string, WorkspaceAccessRole>>
   >
+  workspaceMembers: WorkspaceMemberProfile[]
+  setWorkspaceMembers: Dispatch<SetStateAction<WorkspaceMemberProfile[]>>
 
   // MODELS STORE
   envKeyMap: Record<string, VALID_ENV_KEYS>
@@ -208,6 +211,8 @@ export const ChatbotUIContext = createContext<ChatbotUIContext>({
   setWorkspacePreferences: () => {},
   workspaceRoles: {},
   setWorkspaceRoles: () => {},
+  workspaceMembers: [],
+  setWorkspaceMembers: () => {},
 
   // MODELS STORE
   envKeyMap: {},

@@ -1,6 +1,6 @@
 import { ChatbotUIContext } from "@/context/context"
 import { Tables } from "@/supabase/types"
-import { IconRobotFace } from "@tabler/icons-react"
+import { IconMoodSmile, IconRobotFace } from "@tabler/icons-react"
 import Image from "next/image"
 import { FC, useContext, useEffect, useRef } from "react"
 import { usePromptAndCommand } from "./chat-hooks/use-prompt-and-command"
@@ -14,7 +14,10 @@ export const AssistantPicker: FC<AssistantPickerProps> = ({}) => {
     focusAssistant,
     atCommand,
     isAssistantPickerOpen,
-    setIsAssistantPickerOpen
+    setIsAssistantPickerOpen,
+    selectedWorkspace,
+    workspaceMembers,
+    setUserInput
   } = useContext(ChatbotUIContext)
 
   const { handleSelectAssistant } = usePromptAndCommand()
@@ -31,8 +34,37 @@ export const AssistantPicker: FC<AssistantPickerProps> = ({}) => {
     assistant.name.toLowerCase().includes(atCommand.toLowerCase())
   )
 
+  const isGroupWorkspace = selectedWorkspace?.sharing === "shared"
+  const mentionOptions = [
+    {
+      type: "matrix" as const,
+      id: "matrix",
+      label: "Matrix AI",
+      token: "Matrix"
+    },
+    ...workspaceMembers.map(member => ({
+      type: "member" as const,
+      id: member.member_user_id,
+      label: member.display_name || member.username || "Workspace member",
+      token:
+        member.username ||
+        member.display_name.toLowerCase().replace(/[^a-z0-9_]/g, "") ||
+        member.member_user_id.slice(0, 8),
+      imageUrl: member.image_url
+    }))
+  ].filter(
+    option =>
+      option.label.toLowerCase().includes(atCommand.toLowerCase()) ||
+      option.token.toLowerCase().includes(atCommand.toLowerCase())
+  )
+
   const handleOpenChange = (isOpen: boolean) => {
     setIsAssistantPickerOpen(isOpen)
+  }
+
+  const selectMention = (token: string) => {
+    setUserInput(current => current.replace(/@\S*$/, () => `@${token} `))
+    handleOpenChange(false)
   }
 
   const callSelectAssistant = (assistant: Tables<"assistants">) => {
@@ -70,6 +102,74 @@ export const AssistantPicker: FC<AssistantPickerProps> = ({}) => {
         itemsRef.current[nextIndex]?.focus()
       }
     }
+
+  if (isGroupWorkspace) {
+    return (
+      <>
+        {isAssistantPickerOpen && (
+          <div className="bg-background flex flex-col space-y-1 rounded-xl border-2 p-2 text-sm">
+            {mentionOptions.length === 0 ? (
+              <div className="flex h-14 items-center justify-center text-base italic opacity-70">
+                No matching members or Matrix.
+              </div>
+            ) : (
+              mentionOptions.map((option, index) => (
+                <div
+                  key={option.id}
+                  ref={ref => {
+                    itemsRef.current[index] = ref
+                  }}
+                  role="option"
+                  aria-selected={false}
+                  tabIndex={0}
+                  className="hover:bg-accent focus:bg-accent flex cursor-pointer items-center rounded p-2 focus:outline-none"
+                  onClick={() => selectMention(option.token)}
+                  onKeyDown={event => {
+                    if (event.key === "Enter") {
+                      event.preventDefault()
+                      selectMention(option.token)
+                    } else if (
+                      event.key === "Escape" ||
+                      event.key === "Backspace"
+                    ) {
+                      handleOpenChange(false)
+                    }
+                  }}
+                >
+                  {option.type === "matrix" ? (
+                    <Image
+                      src="/matrix-logo-light.png"
+                      alt=""
+                      width={32}
+                      height={32}
+                      className="rounded-full"
+                    />
+                  ) : option.imageUrl ? (
+                    <Image
+                      src={option.imageUrl}
+                      alt=""
+                      width={32}
+                      height={32}
+                      className="size-8 rounded-full object-cover"
+                    />
+                  ) : (
+                    <IconMoodSmile size={32} />
+                  )}
+                  <div className="ml-3 flex min-w-0 flex-col">
+                    <div className="truncate font-bold">{option.label}</div>
+                    <div className="truncate text-sm opacity-80">
+                      @{option.token}
+                      {option.type === "matrix" ? " · AI agent" : ""}
+                    </div>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        )}
+      </>
+    )
+  }
 
   return (
     <>
