@@ -4,6 +4,17 @@ import { NextResponse, type NextRequest } from "next/server"
 import i18nConfig from "./i18nConfig"
 
 export async function middleware(request: NextRequest) {
+  const legacyInviteMatch = request.nextUrl.pathname.match(
+    /^\/[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}\/invite\/([0-9a-f]{64})\/?$/i
+  )
+
+  if (legacyInviteMatch) {
+    const inviteUrl = request.nextUrl.clone()
+    inviteUrl.pathname = `/invite/${legacyInviteMatch[1]}`
+    inviteUrl.search = ""
+    return NextResponse.redirect(inviteUrl)
+  }
+
   const i18nResult = i18nRouter(request, i18nConfig)
   if (i18nResult) return i18nResult
 
