@@ -1,4 +1,7 @@
-import { DEFAULT_GOOGLE_MODEL_ID } from "@/lib/models/llm/google-llm-list"
+import {
+  DEFAULT_GOOGLE_MODEL_ID,
+  GOOGLE_LLM_LIST
+} from "@/lib/models/llm/google-llm-list"
 import { LLM, LLMID } from "@/types"
 
 export type NexusAgentId = "gemini"
@@ -49,7 +52,9 @@ export const getNexusAgentModel = (agent: NexusAgent, availableModels: LLM[]) =>
     model =>
       model.provider === agent.provider &&
       model.modelId === agent.preferredModel
-  ) || availableModels.find(model => model.provider === agent.provider)
+  ) ||
+  availableModels.find(model => model.provider === agent.provider) ||
+  GOOGLE_LLM_LIST.find(model => model.modelId === agent.preferredModel)
 
 export const stripNexusAgentMentions = (message: string) =>
   message

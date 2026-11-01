@@ -1,5 +1,4 @@
 import { checkApiKey, getServerProfile } from "@/lib/server/server-chat-helpers"
-import { DEFAULT_GOOGLE_MODEL_ID } from "@/lib/models/llm/google-llm-list"
 import { ChatSettings } from "@/types"
 import { GoogleGenerativeAI } from "@google/generative-ai"
 
@@ -19,7 +18,7 @@ export async function POST(request: Request) {
 
     const genAI = new GoogleGenerativeAI(profile.google_gemini_api_key || "")
     const googleModel = genAI.getGenerativeModel({
-      model: DEFAULT_GOOGLE_MODEL_ID,
+      model: chatSettings.model,
       systemInstruction:
         "When responding with mathematical equations, fractions, or chemical formulas, always use standard LaTeX. Use inline math with $...$ for short expressions and block math with $$...$$ for standalone equations or multi-step calculations."
     })

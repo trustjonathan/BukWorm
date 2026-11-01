@@ -5,6 +5,7 @@ import {
   deleteMessageLike,
   getMessageLikes
 } from "@/db/message-likes"
+import { deleteMessage } from "@/db/messages"
 import { supabase } from "@/lib/supabase/browser-client"
 import { buildMessageTree } from "@/lib/thread-tree"
 import { Tables } from "@/supabase/types"
@@ -16,6 +17,7 @@ import { ThreadedMessage } from "../messages/threaded-message"
 export const ChatMessages: FC = () => {
   const {
     chatMessages,
+    setChatMessages,
     chatFileItems,
     selectedChat,
     selectedWorkspace,
@@ -37,6 +39,11 @@ export const ChatMessages: FC = () => {
     !selectedWorkspace ||
     selectedWorkspace.sharing !== "shared" ||
     workspaceRoles[selectedWorkspace.id] !== "viewer"
+  const canDeleteAnyReply = Boolean(
+    selectedWorkspace &&
+      isGroupWorkspace &&
+      ["owner", "admin"].includes(workspaceRoles[selectedWorkspace.id])
+  )
 
   useEffect(() => {
     const messageIds = messageIdsKey.split(",").filter(Boolean)
@@ -111,6 +118,19 @@ export const ChatMessages: FC = () => {
     void handleSendMessage(target.content, history, true)
   }
 
+  const handleDeleteReply = async (message: Tables<"messages">) => {
+    try {
+      await deleteMessage(message.id)
+      setChatMessages(current =>
+        current.filter(item => item.message.id !== message.id)
+      )
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Unable to delete this reply."
+      )
+    }
+  }
+
   return (
     <div className="mx-auto flex w-full max-w-[760px] flex-col gap-2 px-4 py-6">
       {isGroupWorkspace
@@ -134,8 +154,10 @@ export const ChatMessages: FC = () => {
               onRegenerate={handleRegenerate}
               editingMessageId={editingMessage?.id}
               canInteract={canInteract}
+              canDeleteAnyReply={canDeleteAnyReply}
               messageLikes={messageLikes}
               onToggleLike={messageId => void handleToggleLike(messageId)}
+              onDeleteReply={message => void handleDeleteReply(message)}
             />
           ))
         : chatMessages.map((chatMessage, index) => (

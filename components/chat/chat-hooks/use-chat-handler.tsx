@@ -529,6 +529,12 @@ export const useChatHandler = () => {
             setToolInUse
           )
 
+          if (!generatedText.trim()) {
+            throw new Error(
+              "Matrix returned an empty response. Please try again."
+            )
+          }
+
           return {
             assistantMessage,
             generatedText,

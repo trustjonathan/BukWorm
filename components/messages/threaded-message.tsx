@@ -17,11 +17,11 @@ import {
   IconEdit,
   IconFileText,
   IconHeart,
-  IconMessage,
   IconMoodSmile,
   IconPencil,
   IconRepeat,
   IconSend,
+  IconTrash,
   IconX
 } from "@tabler/icons-react"
 import Image from "next/image"
@@ -48,8 +48,10 @@ interface ThreadedMessageProps {
   onRegenerate: (ancestorChain: Tables<"messages">[]) => void
   editingMessageId?: string
   canInteract: boolean
+  canDeleteAnyReply: boolean
   messageLikes: Tables<"message_likes">[]
   onToggleLike: (messageId: string) => void
+  onDeleteReply: (message: Tables<"messages">) => void
 }
 
 export const ThreadedMessage: FC<ThreadedMessageProps> = ({
@@ -63,8 +65,10 @@ export const ThreadedMessage: FC<ThreadedMessageProps> = ({
   onRegenerate,
   editingMessageId,
   canInteract,
+  canDeleteAnyReply,
   messageLikes,
-  onToggleLike
+  onToggleLike,
+  onDeleteReply
 }) => {
   const {
     profile,
@@ -87,7 +91,6 @@ export const ThreadedMessage: FC<ThreadedMessageProps> = ({
   const [isHovering, setIsHovering] = useState(false)
   const [isReplying, setIsReplying] = useState(false)
   const [replyText, setReplyText] = useState("")
-  const [showChildren, setShowChildren] = useState(true)
   const [editedMessage, setEditedMessage] = useState(message.content)
   const [viewSources, setViewSources] = useState(false)
   const [showCheckmark, setShowCheckmark] = useState(false)
@@ -104,6 +107,11 @@ export const ThreadedMessage: FC<ThreadedMessageProps> = ({
   const isEditing = editingMessageId === message.id
   const isAssistant = message.role === "assistant"
   const isSystem = message.role === "system"
+  const canDeleteReply =
+    canInteract &&
+    message.role === "user" &&
+    message.parent_id !== null &&
+    (message.user_id === profile?.user_id || canDeleteAnyReply)
   const author = workspaceMembers.find(
     member => member.member_user_id === message.user_id
   )
@@ -317,7 +325,7 @@ export const ThreadedMessage: FC<ThreadedMessageProps> = ({
           </div>
 
           {/* Vertical trunk line (visible when there are children or active inline reply) */}
-          {(children.length > 0 || isReplying) && showChildren && (
+          {(children.length > 0 || isReplying) && (
             <div className="mt-1 w-[2px] flex-1 bg-slate-200 dark:bg-slate-800" />
           )}
         </div>
@@ -340,11 +348,6 @@ export const ThreadedMessage: FC<ThreadedMessageProps> = ({
                       : "Matrix AI"
                     : authorName}
                 </span>
-                {canInteract && !isSystem && (
-                  <span className="rounded border border-cyan-300 bg-cyan-50 px-1.5 py-0.5 font-sans text-xs text-cyan-700 dark:border-cyan-800 dark:bg-cyan-950 dark:text-cyan-400">
-                    MATRIX NODE
-                  </span>
-                )}
               </>
             )}
           </div>
@@ -510,7 +513,7 @@ export const ThreadedMessage: FC<ThreadedMessageProps> = ({
           </div>
 
           {!isSystem && canInteract && (
-            <div className="-mt-2 mb-2 flex items-center gap-4">
+            <div className="mb-3 mt-1 flex items-center gap-4">
               <button
                 type="button"
                 aria-label={`${isLiked ? "Unlike" : "Like"} message (${likes.length})`}
@@ -532,6 +535,17 @@ export const ThreadedMessage: FC<ThreadedMessageProps> = ({
                 <IconArrowBackUp size={15} />
                 Reply
               </button>
+              {canDeleteReply && (
+                <button
+                  type="button"
+                  aria-label="Delete reply"
+                  className="flex items-center gap-1 text-xs text-slate-500 transition-colors hover:text-rose-500"
+                  onClick={() => onDeleteReply(message)}
+                >
+                  <IconTrash size={15} />
+                  Delete reply
+                </button>
+              )}
             </div>
           )}
 
@@ -573,22 +587,7 @@ export const ThreadedMessage: FC<ThreadedMessageProps> = ({
             </div>
           )}
 
-          {/* Thread controls: replies count toggle (No "Add Note" button) */}
-          {children.length > 0 && (
-            <div className="mt-2 flex items-center justify-end text-xs text-slate-500">
-              <button
-                className="text-caption flex items-center gap-1 font-sans text-cyan-500 hover:underline"
-                onClick={() => setShowChildren(s => !s)}
-              >
-                <IconMessage size={12} />
-                {showChildren
-                  ? `Hide ${children.length} ${children.length === 1 ? "reply" : "replies"}`
-                  : `${children.length} ${children.length === 1 ? "reply" : "replies"} ›`}
-              </button>
-            </div>
-          )}
-
-          {/* Inline reply form (activated via swipe-left on agent message or reply action) */}
+          {/* Inline reply form */}
           {isReplying && canInteract && (
             <form
               onSubmit={handleReplySubmit}
@@ -660,8 +659,8 @@ export const ThreadedMessage: FC<ThreadedMessageProps> = ({
       </div>
 
       {/* ── Nested children branches ────────────────────────────────────────── */}
-      {showChildren && children.length > 0 && (
-        <div className="ml-[18px] border-l-2 border-slate-200 pl-5 dark:border-slate-800">
+      {children.length > 0 && (
+        <div className="ml-0 border-l-0 pl-0">
           {children.map((child, idx) => (
             <ThreadedMessage
               key={child.chatMessage.message.id}
@@ -675,8 +674,10 @@ export const ThreadedMessage: FC<ThreadedMessageProps> = ({
               onRegenerate={onRegenerate}
               editingMessageId={editingMessageId}
               canInteract={canInteract}
+              canDeleteAnyReply={canDeleteAnyReply}
               messageLikes={messageLikes}
               onToggleLike={onToggleLike}
+              onDeleteReply={onDeleteReply}
             />
           ))}
         </div>
