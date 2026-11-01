@@ -20,9 +20,17 @@ import { toast } from "sonner"
 
 interface DeleteChatProps {
   chat: Tables<"chats">
+  open?: boolean
+  onOpenChange?: (open: boolean) => void
+  showTrigger?: boolean
 }
 
-export const DeleteChat: FC<DeleteChatProps> = ({ chat }) => {
+export const DeleteChat: FC<DeleteChatProps> = ({
+  chat,
+  open,
+  onOpenChange,
+  showTrigger = true
+}) => {
   const { setChats, selectedChat } = useContext(ChatbotUIContext)
   const { handleNewChat } = useChatHandler()
   const params = useParams()
@@ -34,7 +42,9 @@ export const DeleteChat: FC<DeleteChatProps> = ({ chat }) => {
 
   const buttonRef = useRef<HTMLButtonElement>(null)
 
-  const [showChatDialog, setShowChatDialog] = useState(false)
+  const [internalOpen, setInternalOpen] = useState(false)
+  const showChatDialog = open ?? internalOpen
+  const setShowChatDialog = onOpenChange ?? setInternalOpen
 
   const [isDeleting, setIsDeleting] = useState(false)
 
@@ -75,17 +85,19 @@ export const DeleteChat: FC<DeleteChatProps> = ({ chat }) => {
 
   return (
     <Dialog open={showChatDialog} onOpenChange={setShowChatDialog}>
-      <DialogTrigger asChild>
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon"
-          className="size-9"
-          aria-label={`Delete ${chat.name}`}
-        >
-          <IconTrash size={18} />
-        </Button>
-      </DialogTrigger>
+      {showTrigger && (
+        <DialogTrigger asChild>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="size-9"
+            aria-label={`Delete ${chat.name}`}
+          >
+            <IconTrash size={18} />
+          </Button>
+        </DialogTrigger>
+      )}
 
       <DialogContent onKeyDown={handleKeyDown}>
         <DialogHeader>

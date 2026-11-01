@@ -9,9 +9,14 @@ import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover"
 interface ChatSettingsProps {
   open?: boolean
   onOpenChange?: (open: boolean) => void
+  hideModelSelect?: boolean
 }
 
-export const ChatSettings: FC<ChatSettingsProps> = ({ open, onOpenChange }) => {
+export const ChatSettings: FC<ChatSettingsProps> = ({
+  open,
+  onOpenChange,
+  hideModelSelect = false
+}) => {
   const { chatSettings, setChatSettings, availableHostedModels } =
     useContext(ChatbotUIContext)
 
@@ -51,10 +56,16 @@ export const ChatSettings: FC<ChatSettingsProps> = ({ open, onOpenChange }) => {
           className="text-muted-foreground hover:text-foreground max-w-[240px] gap-1 px-2 text-sm sm:max-w-[320px]"
           variant="ghost"
           size="sm"
-          aria-label={`Choose model and settings: ${fullModel?.modelName || chatSettings.model}`}
+          aria-label={
+            hideModelSelect
+              ? "Open chat settings"
+              : `Choose model and settings: ${fullModel?.modelName || chatSettings.model}`
+          }
         >
           <div className="max-w-[88px] truncate text-sm sm:max-w-[300px] lg:max-w-[500px]">
-            {fullModel?.modelName || chatSettings.model}
+            {hideModelSelect
+              ? "Chat settings"
+              : fullModel?.modelName || chatSettings.model}
           </div>
 
           <IconChevronDown className="shrink-0" />
@@ -68,6 +79,7 @@ export const ChatSettings: FC<ChatSettingsProps> = ({ open, onOpenChange }) => {
         <ChatSettingsForm
           chatSettings={chatSettings}
           onChangeChatSettings={setChatSettings}
+          hideModelSelect={hideModelSelect}
         />
       </PopoverContent>
     </Popover>

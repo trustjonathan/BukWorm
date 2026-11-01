@@ -20,6 +20,8 @@ export const getMessagesByChatId = async (chatId: string) => {
     .from("messages")
     .select("*")
     .eq("chat_id", chatId)
+    .order("sequence_number", { ascending: true })
+    .order("created_at", { ascending: true })
 
   if (!messages) {
     throw new Error("Messages not found")
@@ -46,7 +48,9 @@ export const searchMessageChatIdsByWorkspace = async (
   return Array.from(new Set(messages.map(message => message.chat_id)))
 }
 
-export const createMessage = async (message: TablesInsert<"messages">) => {
+export const createMessage = async (
+  message: TablesInsert<"messages"> & { parent_id?: string | null }
+) => {
   const { data: createdMessage, error } = await supabase
     .from("messages")
     .insert([message])

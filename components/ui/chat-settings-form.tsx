@@ -18,13 +18,15 @@ interface ChatSettingsFormProps {
   onChangeChatSettings: (value: ChatSettings) => void
   useAdvancedDropdown?: boolean
   showTooltip?: boolean
+  hideModelSelect?: boolean
 }
 
 export const ChatSettingsForm: FC<ChatSettingsFormProps> = ({
   chatSettings,
   onChangeChatSettings,
   useAdvancedDropdown = true,
-  showTooltip = true
+  showTooltip = true,
+  hideModelSelect = false
 }) => {
   const { profile, models } = useContext(ChatbotUIContext)
 
@@ -32,16 +34,18 @@ export const ChatSettingsForm: FC<ChatSettingsFormProps> = ({
 
   return (
     <div className="space-y-3">
-      <div className="space-y-1">
-        <Label>Model</Label>
+      {!hideModelSelect && (
+        <div className="space-y-1">
+          <Label>Model</Label>
 
-        <ModelSelect
-          selectedModelId={chatSettings.model}
-          onSelectModel={model => {
-            onChangeChatSettings({ ...chatSettings, model })
-          }}
-        />
-      </div>
+          <ModelSelect
+            selectedModelId={chatSettings.model}
+            onSelectModel={model => {
+              onChangeChatSettings({ ...chatSettings, model })
+            }}
+          />
+        </div>
+      )}
 
       <div className="space-y-1">
         <Label>Prompt</Label>

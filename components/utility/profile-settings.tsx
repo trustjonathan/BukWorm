@@ -123,7 +123,7 @@ export const ProfileSettings: FC<ProfileSettingsProps> = ({}) => {
     useState<SettingsSection>("profile")
   const [libraryTab, setLibraryTab] = useState<LibraryType>("prompts")
   const [activeChatControl, setActiveChatControl] = useState<
-    "quick" | "model" | "help" | null
+    "quick" | "chat" | "help" | null
   >(null)
 
   const [displayName, setDisplayName] = useState(profile?.display_name || "")
@@ -253,7 +253,7 @@ export const ProfileSettings: FC<ProfileSettingsProps> = ({}) => {
     updateSettingsQuery(open ? settingsSection : undefined)
   }
 
-  const openChatControl = (control: "quick" | "model" | "help") => {
+  const openChatControl = (control: "quick" | "chat" | "help") => {
     setSettingsSection("chat")
     localStorage.setItem("matrixSettingsSection", "chat")
     setActiveChatControl(control)
@@ -262,7 +262,7 @@ export const ProfileSettings: FC<ProfileSettingsProps> = ({}) => {
   }
 
   useHotkey("p", () => openChatControl("quick"))
-  useHotkey("i", () => openChatControl("model"))
+  useHotkey("i", () => openChatControl("chat"))
   useHotkey("/", () => openChatControl("help"))
 
   const handleSignOut = async () => {
@@ -668,16 +668,17 @@ export const ProfileSettings: FC<ProfileSettingsProps> = ({}) => {
                   <div className="space-y-6">
                     <section className="space-y-3">
                       <div>
-                        <h3 className="text-sm font-semibold">Model</h3>
+                        <h3 className="text-sm font-semibold">Chat behavior</h3>
                         <p className="text-muted-foreground text-sm">
-                          Choose the model and adjust settings for the current
-                          chat.
+                          Adjust prompts and response settings for the current
+                          chat. Your account default model is chosen separately.
                         </p>
                       </div>
                       <ChatSettings
-                        open={activeChatControl === "model"}
+                        hideModelSelect
+                        open={activeChatControl === "chat"}
                         onOpenChange={open =>
-                          setActiveChatControl(open ? "model" : null)
+                          setActiveChatControl(open ? "chat" : null)
                         }
                       />
                     </section>

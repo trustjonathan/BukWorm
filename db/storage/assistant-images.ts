@@ -13,18 +13,15 @@ export const uploadAssistantImage = async (
     throw new Error(`Image must be less than ${imageSizeLimit / 1000000}MB`)
   }
 
-  const currentPath = assistant.image_path
-  let filePath = `${assistant.user_id}/${assistant.id}/${Date.now()}`
-
-  if (currentPath.length > 0) {
-    const { error: deleteError } = await supabase.storage
-      .from(bucket)
-      .remove([currentPath])
-
-    if (deleteError) {
-      throw new Error("Error deleting old image")
-    }
+  const { data, error: userError } = await supabase.auth.getUser()
+  if (userError) {
+    throw new Error(userError.message)
   }
+  if (!data.user) {
+    throw new Error("You must be signed in to upload an assistant image.")
+  }
+
+  const filePath = `${data.user.id}/${assistant.id}/${Date.now()}`
 
   const { error } = await supabase.storage
     .from(bucket)
@@ -37,6 +34,16 @@ export const uploadAssistantImage = async (
   }
 
   return filePath
+}
+
+export const deleteAssistantImage = async (filePath: string) => {
+  const { error } = await supabase.storage
+    .from("assistant_images")
+    .remove([filePath])
+
+  if (error) {
+    throw new Error(error.message)
+  }
 }
 
 export const getAssistantImageFromStorage = async (filePath: string) => {

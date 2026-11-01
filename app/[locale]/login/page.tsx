@@ -17,8 +17,18 @@ export const metadata: Metadata = {
 export default async function Login({
   searchParams
 }: {
-  searchParams: { message: string }
+  searchParams: { message?: string; next?: string }
 }) {
+  const requestedNext = searchParams.next
+  const nextPath =
+    requestedNext?.startsWith("/") &&
+    !requestedNext.startsWith("//") &&
+    !requestedNext.includes("\\")
+      ? requestedNext
+      : null
+  const setupPath = nextPath
+    ? `/setup?next=${encodeURIComponent(nextPath)}`
+    : "/setup"
   const cookieStore = cookies()
   const supabase = createServerClient<Database>(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -34,6 +44,24 @@ export default async function Login({
   const session = (await supabase.auth.getSession()).data.session
 
   if (session) {
+    const { data: profile, error: profileError } = await supabase
+      .from("profiles")
+      .select("default_model")
+      .eq("user_id", session.user.id)
+      .single()
+
+    if (profileError) {
+      throw new Error(`Could not load your profile: ${profileError.message}`)
+    }
+
+    if (!profile.default_model) {
+      return redirect(setupPath)
+    }
+
+    if (nextPath) {
+      return redirect(nextPath)
+    }
+
     const { data: homeWorkspace, error } = await supabase
       .from("workspaces")
       .select("*")
@@ -62,7 +90,28 @@ export default async function Login({
     })
 
     if (error) {
-      return redirect(`/login?message=${error.message}`)
+      const nextQuery = nextPath ? `&next=${encodeURIComponent(nextPath)}` : ""
+      return redirect(
+        `/login?message=${encodeURIComponent(error.message)}${nextQuery}`
+      )
+    }
+
+    const { data: profile, error: profileError } = await supabase
+      .from("profiles")
+      .select("default_model")
+      .eq("user_id", data.user.id)
+      .single()
+
+    if (profileError) {
+      throw new Error(`Could not load your profile: ${profileError.message}`)
+    }
+
+    if (!profile.default_model) {
+      return redirect(setupPath)
+    }
+
+    if (nextPath) {
+      return redirect(nextPath)
     }
 
     const { data: homeWorkspace, error: homeWorkspaceError } = await supabase
@@ -93,8 +142,18 @@ export default async function Login({
   const signUp = async (formData: FormData) => {
     "use server"
 
-    const email = formData.get("email") as string
+    const emailValue = formData.get("email")
+    const email = typeof emailValue === "string" ? emailValue.trim() : ""
     const password = formData.get("password") as string
+
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      const nextQuery = nextPath ? `&next=${encodeURIComponent(nextPath)}` : ""
+      return redirect(
+        `/login?message=${encodeURIComponent(
+          "Please enter a valid email address."
+        )}${nextQuery}`
+      )
+    }
 
     const emailDomainWhitelistPatternsString = await getEnvVarOrEdgeConfigValue(
       "EMAIL_DOMAIN_WHITELIST"
@@ -121,13 +180,28 @@ export default async function Login({
 
     const cookieStore = cookies()
     const supabase = createClient(cookieStore)
+    const origin = headers().get("origin")
 
-    const { error } = await supabase.auth.signUp({
+    if (!origin) {
+      const nextQuery = nextPath ? `&next=${encodeURIComponent(nextPath)}` : ""
+      return redirect(
+        `/login?message=${encodeURIComponent(
+          "Unable to start email confirmation. Please try signing up again."
+        )}${nextQuery}`
+      )
+    }
+
+    const setupPath = nextPath
+      ? `/setup?next=${encodeURIComponent(nextPath)}`
+      : "/setup"
+
+    const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: {
-        // USE IF YOU WANT TO SEND EMAIL VERIFICATION, ALSO CHANGE TOML FILE
-        // emailRedirectTo: `${origin}/auth/callback`
+        emailRedirectTo: `${origin}/auth/callback?next=${encodeURIComponent(
+          setupPath
+        )}`
       }
     })
 
@@ -136,10 +210,15 @@ export default async function Login({
       return redirect(`/login?message=${error.message}`)
     }
 
-    return redirect("/setup")
+    if (!data.session) {
+      const message = `We sent a confirmation link to ${email}. Check your inbox and spam folder, then click the link to confirm your email before signing in.`
+      const nextQuery = nextPath ? `&next=${encodeURIComponent(nextPath)}` : ""
+      return redirect(
+        `/login?message=${encodeURIComponent(message)}${nextQuery}`
+      )
+    }
 
-    // USE IF YOU WANT TO SEND EMAIL VERIFICATION, ALSO CHANGE TOML FILE
-    // return redirect("/login?message=Check email to continue sign in process")
+    return redirect(setupPath)
   }
 
   const handleResetPassword = async (formData: FormData) => {
@@ -174,6 +253,7 @@ export default async function Login({
         </Label>
         <Input
           className="mb-3 rounded-md border bg-inherit px-4 py-2"
+          type="email"
           name="email"
           placeholder="you@example.com"
           required

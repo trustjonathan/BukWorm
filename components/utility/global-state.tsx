@@ -6,6 +6,7 @@ import { ChatbotUIContext } from "@/context/context"
 import { getProfileByUserId } from "@/db/profile"
 import { getWorkspaceImageFromStorage } from "@/db/storage/workspace-images"
 import { getWorkspacesByUserId } from "@/db/workspaces"
+import { getWorkspaceRoles } from "@/db/workspace-collaboration"
 import { convertBlobToBase64 } from "@/lib/blob-to-b64"
 import { DEFAULT_GOOGLE_MODEL_ID } from "@/lib/models/llm/google-llm-list"
 import { NexusAgentId } from "@/lib/chat-agents"
@@ -23,8 +24,8 @@ import {
 } from "@/types"
 import { AssistantImage } from "@/types/images/assistant-image"
 import { VALID_ENV_KEYS } from "@/types/valid-keys"
-import { useRouter } from "next/navigation"
-import { FC, useEffect, useState } from "react"
+import { usePathname, useRouter } from "next/navigation"
+import { FC, useCallback, useEffect, useRef, useState } from "react"
 
 interface GlobalStateProps {
   children: React.ReactNode
@@ -32,6 +33,9 @@ interface GlobalStateProps {
 
 export const GlobalState: FC<GlobalStateProps> = ({ children }) => {
   const router = useRouter()
+  const pathname = usePathname()
+  const pathnameRef = useRef(pathname)
+  pathnameRef.current = pathname
 
   // PROFILE STORE
   const [profile, setProfile] = useState<Tables<"profiles"> | null>(null)
@@ -40,6 +44,9 @@ export const GlobalState: FC<GlobalStateProps> = ({ children }) => {
   const [assistants, setAssistants] = useState<Tables<"assistants">[]>([])
   const [collections, setCollections] = useState<Tables<"collections">[]>([])
   const [chats, setChats] = useState<Tables<"chats">[]>([])
+  const [chatPreferences, setChatPreferences] = useState<
+    Tables<"chat_user_preferences">[]
+  >([])
   const [files, setFiles] = useState<Tables<"files">[]>([])
   const [folders, setFolders] = useState<Tables<"folders">[]>([])
   const [models, setModels] = useState<Tables<"models">[]>([])
@@ -47,6 +54,12 @@ export const GlobalState: FC<GlobalStateProps> = ({ children }) => {
   const [prompts, setPrompts] = useState<Tables<"prompts">[]>([])
   const [tools, setTools] = useState<Tables<"tools">[]>([])
   const [workspaces, setWorkspaces] = useState<Tables<"workspaces">[]>([])
+  const [workspacePreferences, setWorkspacePreferences] = useState<
+    Tables<"workspace_user_preferences">[]
+  >([])
+  const [workspaceRoles, setWorkspaceRoles] = useState<
+    Record<string, "owner" | "admin" | "editor" | "viewer">
+  >({})
 
   // MODELS STORE
   const [envKeyMap, setEnvKeyMap] = useState<Record<string, VALID_ENV_KEYS>>({})
@@ -91,6 +104,7 @@ export const GlobalState: FC<GlobalStateProps> = ({ children }) => {
   const [streamingSpeed, setStreamingSpeed] = useState<
     "instant" | "natural" | "relaxed"
   >("natural")
+  const [isTemporaryChat, setIsTemporaryChat] = useState(false)
 
   // ACTIVE CHAT STORE
   const [isGenerating, setIsGenerating] = useState<boolean>(false)
@@ -161,21 +175,7 @@ export const GlobalState: FC<GlobalStateProps> = ({ children }) => {
     }
   }, [])
 
-  useEffect(() => {
-    ;(async () => {
-      const profile = await fetchStartingData()
-
-      if (profile) {
-        const hostedModelRes = await fetchHostedModels(profile)
-        if (!hostedModelRes) return
-
-        setEnvKeyMap(hostedModelRes.envKeyMap)
-        setAvailableHostedModels(hostedModelRes.hostedModels)
-      }
-    })()
-  }, [])
-
-  const fetchStartingData = async () => {
+  const fetchStartingData = useCallback(async () => {
     const session = (await supabase.auth.getSession()).data.session
 
     if (session) {
@@ -184,12 +184,32 @@ export const GlobalState: FC<GlobalStateProps> = ({ children }) => {
       const profile = await getProfileByUserId(user.id)
       setProfile(profile)
 
-      if (!profile.has_onboarded) {
-        return router.push("/setup")
+      if (!profile.has_onboarded || !profile.default_model) {
+        const currentPathname = pathnameRef.current
+        if (!currentPathname.endsWith("/setup")) {
+          const requestedNext = new URLSearchParams(window.location.search).get(
+            "next"
+          )
+          const nextPath =
+            requestedNext?.startsWith("/") &&
+            !requestedNext.startsWith("//") &&
+            !requestedNext.includes("\\")
+              ? requestedNext
+              : currentPathname.endsWith("/login")
+                ? null
+                : `${currentPathname}${window.location.search}`
+          const nextQuery = nextPath
+            ? `?next=${encodeURIComponent(nextPath)}`
+            : ""
+          router.push(`/setup${nextQuery}`)
+        }
+
+        return profile
       }
 
       const workspaces = await getWorkspacesByUserId(user.id)
       setWorkspaces(workspaces)
+      setWorkspaceRoles(await getWorkspaceRoles(workspaces, user.id))
 
       for (const workspace of workspaces) {
         let workspaceImageUrl = ""
@@ -218,13 +238,29 @@ export const GlobalState: FC<GlobalStateProps> = ({ children }) => {
 
       return profile
     }
-  }
+  }, [router, setProfile, setWorkspaceImages, setWorkspaceRoles, setWorkspaces])
+
+  useEffect(() => {
+    ;(async () => {
+      const profile = await fetchStartingData()
+
+      if (profile) {
+        const hostedModelRes = await fetchHostedModels(profile)
+        if (!hostedModelRes) return
+
+        setEnvKeyMap(hostedModelRes.envKeyMap)
+        setAvailableHostedModels(hostedModelRes.hostedModels)
+      }
+    })()
+  }, [fetchStartingData, setAvailableHostedModels, setEnvKeyMap])
 
   return (
     <ChatbotUIContext.Provider
       value={{
         streamingSpeed,
         setStreamingSpeed,
+        isTemporaryChat,
+        setIsTemporaryChat,
 
         // PROFILE STORE
         profile,
@@ -237,6 +273,8 @@ export const GlobalState: FC<GlobalStateProps> = ({ children }) => {
         setCollections,
         chats,
         setChats,
+        chatPreferences,
+        setChatPreferences,
         files,
         setFiles,
         folders,
@@ -251,6 +289,10 @@ export const GlobalState: FC<GlobalStateProps> = ({ children }) => {
         setTools,
         workspaces,
         setWorkspaces,
+        workspacePreferences,
+        setWorkspacePreferences,
+        workspaceRoles,
+        setWorkspaceRoles,
 
         // MODELS STORE
         envKeyMap,

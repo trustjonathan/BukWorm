@@ -8,18 +8,23 @@ import { getMessageFileItemsByMessageId } from "@/db/message-file-items"
 import { getMessagesByChatId } from "@/db/messages"
 import { getMessageImageFromStorage } from "@/db/storage/message-images"
 import { convertBlobToBase64 } from "@/lib/blob-to-b64"
+import { supabase } from "@/lib/supabase/browser-client"
+import { Tables } from "@/supabase/types"
 import useHotkey from "@/lib/hooks/use-hotkey"
 import { LLMID, MessageImage } from "@/types"
-import { DEFAULT_GOOGLE_MODEL_ID } from "@/lib/models/llm/google-llm-list"
+import { getDefaultModelId } from "@/lib/models/llm/llm-list"
 import {
   IconBolt,
   IconCircleFilled,
+  IconEyeOff,
   IconLayoutSidebar,
+  IconShare,
   IconSparkles
 } from "@tabler/icons-react"
 import Image from "next/image"
 import { useParams } from "next/navigation"
 import { FC, useContext, useEffect, useState } from "react"
+import { toast } from "sonner"
 import { Button } from "../ui/button"
 import { useScroll } from "./chat-hooks/use-scroll"
 import { ChatInput } from "./chat-input"
@@ -50,7 +55,11 @@ export const ChatUI: FC<ChatUIProps> = ({}) => {
     availableHostedModels,
     chatSettings,
     showSidebar,
-    setShowSidebar
+    setShowSidebar,
+    isGenerating,
+    isTemporaryChat,
+    setIsTemporaryChat,
+    profile
   } = useContext(ChatbotUIContext)
 
   const { handleNewChat, handleFocusChatInput } = useChatHandler()
@@ -66,6 +75,10 @@ export const ChatUI: FC<ChatUIProps> = ({}) => {
   } = useScroll()
 
   const [loading, setLoading] = useState(true)
+  const [realtimeStatus, setRealtimeStatus] = useState<
+    "connecting" | "connected" | "error"
+  >("connecting")
+  const chatId = typeof params.chatid === "string" ? params.chatid : null
 
   useEffect(() => {
     const fetchData = async () => {
@@ -77,6 +90,7 @@ export const ChatUI: FC<ChatUIProps> = ({}) => {
     }
 
     if (params.chatid) {
+      setIsTemporaryChat(false)
       fetchData().then(() => {
         handleFocusChatInput()
         setLoading(false)
@@ -85,6 +99,135 @@ export const ChatUI: FC<ChatUIProps> = ({}) => {
       setLoading(false)
     }
   }, [])
+
+  useEffect(() => {
+    if (!chatId) return
+
+    let active = true
+    setRealtimeStatus("connecting")
+    const channel = supabase
+      .channel(`chat-messages:${chatId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "messages",
+          filter: `chat_id=eq.${chatId}`
+        },
+        payload => {
+          if (payload.eventType === "DELETE") {
+            const deletedMessage = payload.old as { id?: string }
+            if (!deletedMessage.id) return
+
+            setChatMessages(messages =>
+              messages.filter(
+                message => message.message.id !== deletedMessage.id
+              )
+            )
+            return
+          }
+
+          const message = payload.new as Tables<"messages">
+          if (!message.id || message.chat_id !== chatId) return
+
+          setChatMessages(messages => {
+            const existingIndex = messages.findIndex(
+              item => item.message.id === message.id
+            )
+            const nextMessages =
+              existingIndex >= 0
+                ? messages.map((item, index) =>
+                    index === existingIndex ? { ...item, message } : item
+                  )
+                : [...messages, { message, fileItems: [] }]
+
+            return nextMessages.sort(
+              (left, right) =>
+                left.message.sequence_number - right.message.sequence_number ||
+                left.message.created_at.localeCompare(
+                  right.message.created_at
+                ) ||
+                left.message.id.localeCompare(right.message.id)
+            )
+          })
+
+          if (message.image_paths.length > 0) {
+            void Promise.all(
+              message.image_paths.map(async path => {
+                const url = await getMessageImageFromStorage(path)
+                if (!url) return null
+
+                const response = await fetch(url)
+                if (!response.ok) {
+                  throw new Error(`Failed to load message image: ${path}`)
+                }
+
+                const blob = await response.blob()
+                const base64 = await convertBlobToBase64(blob)
+
+                return {
+                  messageId: message.id,
+                  path,
+                  base64,
+                  url,
+                  file: null
+                }
+              })
+            )
+              .then(images => {
+                setChatImages(currentImages => {
+                  const loadedImages = images.filter(
+                    (image): image is NonNullable<typeof image> =>
+                      image !== null
+                  )
+                  const loadedPaths = new Set(
+                    loadedImages.map(image => image.path)
+                  )
+
+                  return [
+                    ...currentImages.filter(
+                      image => !loadedPaths.has(image.path)
+                    ),
+                    ...loadedImages
+                  ]
+                })
+              })
+              .catch(error => {
+                console.error(
+                  "Failed to load a live chat message image:",
+                  error
+                )
+              })
+          }
+        }
+      )
+      .subscribe(status => {
+        if (!active) return
+
+        if (status === "SUBSCRIBED") {
+          setRealtimeStatus("connected")
+          return
+        }
+
+        if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
+          setRealtimeStatus("error")
+          console.error(
+            `Supabase message subscription for chat ${chatId} failed: ${status}`
+          )
+          return
+        }
+
+        if (status === "CLOSED") {
+          setRealtimeStatus("error")
+        }
+      })
+
+    return () => {
+      active = false
+      void supabase.removeChannel(channel)
+    }
+  }, [chatId, setChatImages, setChatMessages])
 
   const fetchMessages = async () => {
     const fetchedMessages = await getMessagesByChatId(params.chatid as string)
@@ -157,7 +300,37 @@ export const ChatUI: FC<ChatUIProps> = ({}) => {
       }
     })
 
-    setChatMessages(fetchedChatMessages)
+    setChatMessages(currentMessages => {
+      const messagesById = new Map(
+        fetchedChatMessages.map(item => [item.message.id, item])
+      )
+
+      for (const current of currentMessages) {
+        if (current.message.chat_id !== params.chatid) continue
+
+        const fetched = messagesById.get(current.message.id)
+        messagesById.set(
+          current.message.id,
+          fetched
+            ? {
+                ...fetched,
+                message: current.message,
+                fileItems:
+                  current.fileItems.length > 0
+                    ? current.fileItems
+                    : fetched.fileItems
+              }
+            : current
+        )
+      }
+
+      return [...messagesById.values()].sort(
+        (left, right) =>
+          left.message.sequence_number - right.message.sequence_number ||
+          left.message.created_at.localeCompare(right.message.created_at) ||
+          left.message.id.localeCompare(right.message.id)
+      )
+    })
   }
 
   const fetchChat = async () => {
@@ -183,7 +356,7 @@ export const ChatUI: FC<ChatUIProps> = ({}) => {
     setChatSettings({
       model: availableHostedModels.some(model => model.modelId === chat.model)
         ? (chat.model as LLMID)
-        : DEFAULT_GOOGLE_MODEL_ID,
+        : getDefaultModelId(profile?.default_model),
       prompt: chat.prompt,
       temperature: chat.temperature,
       contextLength: Math.min(chat.context_length, 32768),
@@ -191,6 +364,36 @@ export const ChatUI: FC<ChatUIProps> = ({}) => {
       includeWorkspaceInstructions: chat.include_workspace_instructions,
       embeddingsProvider: "local"
     })
+  }
+
+  const handleShareChat = async () => {
+    if (!selectedChat) return
+
+    try {
+      const chatUrl = new URL(
+        `/${selectedChat.workspace_id}/chat/${selectedChat.id}`,
+        window.location.origin
+      ).toString()
+      await navigator.clipboard.writeText(chatUrl)
+      toast.success(
+        "Chat link copied. Workspace access is required to open it."
+      )
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Could not copy the chat link."
+      )
+    }
+  }
+
+  const handleTemporaryChatToggle = async () => {
+    if (isGenerating) {
+      toast.error("Stop the current response before changing chat mode.")
+      return
+    }
+
+    const enableTemporary = !isTemporaryChat
+    setIsTemporaryChat(enableTemporary)
+    await handleNewChat(enableTemporary)
   }
 
   if (loading) {
@@ -224,13 +427,82 @@ export const ChatUI: FC<ChatUIProps> = ({}) => {
                 {selectedChat?.name || "Matrix AI"}
               </div>
               <div className="mt-0.5 hidden items-center gap-1.5 text-xs text-slate-500 sm:flex dark:text-slate-400">
-                <IconSparkles
-                  size={13}
-                  className="text-cyan-600 dark:text-cyan-400"
-                />
-                Matrix-powered · Streaming responses
+                {isTemporaryChat ? (
+                  <>
+                    <IconEyeOff
+                      size={13}
+                      className="text-cyan-600 dark:text-cyan-400"
+                    />
+                    Temporary chat · not saved to Matrix
+                  </>
+                ) : (
+                  <>
+                    <IconSparkles
+                      size={13}
+                      className="text-cyan-600 dark:text-cyan-400"
+                    />
+                    Matrix-powered · Streaming responses
+                  </>
+                )}
               </div>
+              {chatId && !isTemporaryChat && (
+                <div
+                  className="text-muted-foreground mt-1 flex items-center gap-1.5 text-[11px]"
+                  role="status"
+                  aria-live="polite"
+                >
+                  <IconCircleFilled
+                    size={8}
+                    className={
+                      realtimeStatus === "connected"
+                        ? "text-emerald-500"
+                        : realtimeStatus === "error"
+                          ? "text-destructive"
+                          : "text-amber-500"
+                    }
+                    aria-hidden="true"
+                  />
+                  {realtimeStatus === "connected"
+                    ? "Live updates connected"
+                    : realtimeStatus === "error"
+                      ? "Live updates unavailable"
+                      : "Connecting to live updates"}
+                </div>
+              )}
             </div>
+          </div>
+          <div className="flex shrink-0 items-center gap-1">
+            {selectedChat && !isTemporaryChat && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="size-9"
+                aria-label="Share chat link"
+                title="Share chat link"
+                onClick={() => void handleShareChat()}
+              >
+                <IconShare size={18} />
+              </Button>
+            )}
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className={`size-9 ${
+                isTemporaryChat ? "bg-accent text-accent-foreground" : ""
+              }`}
+              aria-label={
+                isTemporaryChat ? "Exit temporary chat" : "Start temporary chat"
+              }
+              aria-pressed={isTemporaryChat}
+              title={
+                isTemporaryChat ? "Exit temporary chat" : "Start temporary chat"
+              }
+              onClick={() => void handleTemporaryChatToggle()}
+            >
+              <IconEyeOff size={18} />
+            </Button>
           </div>
         </header>
 

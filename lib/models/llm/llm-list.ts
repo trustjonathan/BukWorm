@@ -1,4 +1,5 @@
-import { LLM } from "@/types"
+import { LLM, LLMID } from "@/types"
+import { DEFAULT_GOOGLE_MODEL_ID } from "./google-llm-list"
 import { ANTHROPIC_LLM_LIST } from "./anthropic-llm-list"
 import { GOOGLE_LLM_LIST } from "./google-llm-list"
 import { MISTRAL_LLM_LIST } from "./mistral-llm-list"
@@ -14,6 +15,10 @@ export const LLM_LIST: LLM[] = [
   ...PERPLEXITY_LLM_LIST,
   ...ANTHROPIC_LLM_LIST
 ]
+
+export const getDefaultModelId = (modelId: string | null | undefined): LLMID =>
+  LLM_LIST.find(model => model.modelId === modelId)?.modelId ||
+  DEFAULT_GOOGLE_MODEL_ID
 
 export const LLM_LIST_MAP: Record<string, LLM[]> = {
   openai: OPENAI_LLM_LIST,

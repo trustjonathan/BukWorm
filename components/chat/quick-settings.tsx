@@ -4,7 +4,7 @@ import { getAssistantFilesByAssistantId } from "@/db/assistant-files"
 import { getAssistantToolsByAssistantId } from "@/db/assistant-tools"
 import { getCollectionFilesByCollectionId } from "@/db/collection-files"
 import { LLM_LIST } from "@/lib/models/llm/llm-list"
-import { DEFAULT_GOOGLE_MODEL_ID } from "@/lib/models/llm/google-llm-list"
+import { getDefaultModelId } from "@/lib/models/llm/llm-list"
 import { Tables } from "@/supabase/types"
 import { IconChevronDown, IconRobotFace } from "@tabler/icons-react"
 import Image from "next/image"
@@ -50,7 +50,8 @@ export const QuickSettings: FC<QuickSettingsProps> = ({
     setChatFiles,
     setSelectedTools,
     setShowFilesDisplay,
-    selectedWorkspace
+    selectedWorkspace,
+    profile
   } = useContext(ChatbotUIContext)
 
   const inputRef = useRef<HTMLInputElement>(null)
@@ -119,7 +120,9 @@ export const QuickSettings: FC<QuickSettingsProps> = ({
       setSelectedTools([])
       if (selectedWorkspace) {
         setChatSettings({
-          model: DEFAULT_GOOGLE_MODEL_ID,
+          model: getDefaultModelId(
+            profile?.default_model || selectedWorkspace.default_model
+          ),
           prompt: selectedWorkspace.default_prompt,
           temperature: selectedWorkspace.default_temperature,
           contextLength: Math.min(
@@ -136,7 +139,9 @@ export const QuickSettings: FC<QuickSettingsProps> = ({
     }
 
     setChatSettings({
-      model: DEFAULT_GOOGLE_MODEL_ID,
+      model: getDefaultModelId(
+        profile?.default_model || selectedWorkspace?.default_model
+      ),
       prompt: item.prompt,
       temperature: item.temperature,
       contextLength: Math.min(item.context_length, 32768),
@@ -192,9 +197,10 @@ export const QuickSettings: FC<QuickSettingsProps> = ({
         image => image.path === selectedAssistant?.image_path
       )?.base64 || ""
 
-  const modelDetails = LLM_LIST.find(
-    model => model.modelId === DEFAULT_GOOGLE_MODEL_ID
+  const defaultModelId = getDefaultModelId(
+    profile?.default_model || selectedWorkspace?.default_model
   )
+  const modelDetails = LLM_LIST.find(model => model.modelId === defaultModelId)
 
   return (
     <DropdownMenu

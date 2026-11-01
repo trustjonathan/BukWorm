@@ -423,7 +423,8 @@ export const handleCreateMessages = async (
   assistantResponses?: { modelData: LLM; generatedText: string }[],
   userModelId?: LLMID,
   /** parent_id for the user message — used for threaded replies */
-  parentId?: string | null
+  parentId?: string | null,
+  persistedUserMessage?: Tables<"messages"> | null
 ) => {
   const finalUserMessage: TablesInsert<"messages"> & {
     parent_id?: string | null
@@ -472,18 +473,21 @@ export const handleCreateMessages = async (
 
     setChatMessages(finalChatMessages)
   } else {
-    const createdMessages = await createMessages([
-      finalUserMessage,
-      ...finalAssistantMessages
-    ])
+    const createdMessages = await createMessages(
+      persistedUserMessage
+        ? finalAssistantMessages
+        : [finalUserMessage, ...finalAssistantMessages]
+    )
+    const userMessage = persistedUserMessage || createdMessages[0]
+    const assistantMessages = persistedUserMessage
+      ? createdMessages
+      : createdMessages.slice(1)
 
     // Upload each image (stored in newMessageImages) for the user message to message_images bucket
     const uploadPromises = newMessageImages
       .filter(obj => obj.file !== null)
       .map(obj => {
-        let filePath = `${profile.user_id}/${currentChat.id}/${
-          createdMessages[0].id
-        }/${uuidv4()}`
+        let filePath = `${profile.user_id}/${currentChat.id}/${userMessage.id}/${uuidv4()}`
 
         return uploadMessageImage(filePath, obj.file as File).catch(error => {
           console.error(`Failed to upload image at ${filePath}:`, error)
@@ -499,19 +503,21 @@ export const handleCreateMessages = async (
       ...prevImages,
       ...newMessageImages.map((obj, index) => ({
         ...obj,
-        messageId: createdMessages[0].id,
+        messageId: userMessage.id,
         path: paths[index]
       }))
     ])
 
-    const updatedMessage = await updateMessage(createdMessages[0].id, {
-      ...createdMessages[0],
-      image_paths: paths
-    })
+    const updatedUserMessage = paths.length
+      ? await updateMessage(userMessage.id, {
+          ...userMessage,
+          image_paths: paths
+        })
+      : userMessage
 
     await createMessageFileItems(
       retrievedFileItems.flatMap(fileItem =>
-        createdMessages.slice(1).map(assistantMessage => ({
+        assistantMessages.map(assistantMessage => ({
           user_id: profile.user_id,
           message_id: assistantMessage.id,
           file_item_id: fileItem.id
@@ -522,10 +528,10 @@ export const handleCreateMessages = async (
     finalChatMessages = [
       ...chatMessages,
       {
-        message: updatedMessage,
+        message: updatedUserMessage,
         fileItems: []
       },
-      ...createdMessages.slice(1).map(message => ({
+      ...assistantMessages.map(message => ({
         message,
         fileItems: retrievedFileItems.map(fileItem => fileItem.id)
       }))
@@ -539,6 +545,23 @@ export const handleCreateMessages = async (
       return [...prevFileItems, ...newFileItems]
     })
 
-    setChatMessages(finalChatMessages)
+    setChatMessages(currentMessages => {
+      const mergedMessages = new Map(
+        currentMessages
+          .filter(message => message.message.created_at !== "")
+          .map(message => [message.message.id, message])
+      )
+
+      finalChatMessages.forEach(message =>
+        mergedMessages.set(message.message.id, message)
+      )
+
+      return [...mergedMessages.values()].sort(
+        (left, right) =>
+          left.message.sequence_number - right.message.sequence_number ||
+          left.message.created_at.localeCompare(right.message.created_at) ||
+          left.message.id.localeCompare(right.message.id)
+      )
+    })
   }
 }

@@ -13,9 +13,13 @@ import { VALID_ENV_KEYS } from "@/types/valid-keys"
 import { NexusAgentId } from "@/lib/chat-agents"
 import { Dispatch, SetStateAction, createContext } from "react"
 
+export type WorkspaceAccessRole = "owner" | "admin" | "editor" | "viewer"
+
 interface ChatbotUIContext {
   streamingSpeed: "instant" | "natural" | "relaxed"
   setStreamingSpeed: Dispatch<SetStateAction<"instant" | "natural" | "relaxed">>
+  isTemporaryChat: boolean
+  setIsTemporaryChat: Dispatch<SetStateAction<boolean>>
 
   // PROFILE STORE
   profile: Tables<"profiles"> | null
@@ -28,6 +32,10 @@ interface ChatbotUIContext {
   setCollections: Dispatch<SetStateAction<Tables<"collections">[]>>
   chats: Tables<"chats">[]
   setChats: Dispatch<SetStateAction<Tables<"chats">[]>>
+  chatPreferences: Tables<"chat_user_preferences">[]
+  setChatPreferences: Dispatch<
+    SetStateAction<Tables<"chat_user_preferences">[]>
+  >
   files: Tables<"files">[]
   setFiles: Dispatch<SetStateAction<Tables<"files">[]>>
   folders: Tables<"folders">[]
@@ -42,6 +50,14 @@ interface ChatbotUIContext {
   setTools: Dispatch<SetStateAction<Tables<"tools">[]>>
   workspaces: Tables<"workspaces">[]
   setWorkspaces: Dispatch<SetStateAction<Tables<"workspaces">[]>>
+  workspacePreferences: Tables<"workspace_user_preferences">[]
+  setWorkspacePreferences: Dispatch<
+    SetStateAction<Tables<"workspace_user_preferences">[]>
+  >
+  workspaceRoles: Record<string, WorkspaceAccessRole>
+  setWorkspaceRoles: Dispatch<
+    SetStateAction<Record<string, WorkspaceAccessRole>>
+  >
 
   // MODELS STORE
   envKeyMap: Record<string, VALID_ENV_KEYS>
@@ -158,6 +174,8 @@ interface ChatbotUIContext {
 export const ChatbotUIContext = createContext<ChatbotUIContext>({
   streamingSpeed: "natural",
   setStreamingSpeed: () => {},
+  isTemporaryChat: false,
+  setIsTemporaryChat: () => {},
 
   // PROFILE STORE
   profile: null,
@@ -170,6 +188,8 @@ export const ChatbotUIContext = createContext<ChatbotUIContext>({
   setCollections: () => {},
   chats: [],
   setChats: () => {},
+  chatPreferences: [],
+  setChatPreferences: () => {},
   files: [],
   setFiles: () => {},
   folders: [],
@@ -184,6 +204,10 @@ export const ChatbotUIContext = createContext<ChatbotUIContext>({
   setTools: () => {},
   workspaces: [],
   setWorkspaces: () => {},
+  workspacePreferences: [],
+  setWorkspacePreferences: () => {},
+  workspaceRoles: {},
+  setWorkspaceRoles: () => {},
 
   // MODELS STORE
   envKeyMap: {},

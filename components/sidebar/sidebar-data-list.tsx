@@ -59,7 +59,8 @@ export const SidebarDataList: FC<SidebarDataListProps> = ({
     setCollections,
     setAssistants,
     setTools,
-    setModels
+    setModels,
+    chatPreferences
   } = useContext(ChatbotUIContext)
 
   const divRef = useRef<HTMLDivElement>(null)
@@ -78,6 +79,7 @@ export const SidebarDataList: FC<SidebarDataListProps> = ({
           <ChatItem
             key={item.id}
             chat={item as Tables<"chats">}
+            folders={folders}
             onNavigate={onNavigate}
           />
         )
@@ -151,11 +153,22 @@ export const SidebarDataList: FC<SidebarDataListProps> = ({
       })
       .sort(
         (
-          a: { updated_at: string; created_at: string },
-          b: { updated_at: string; created_at: string }
-        ) =>
-          new Date(b.updated_at || b.created_at).getTime() -
-          new Date(a.updated_at || a.created_at).getTime()
+          a: { id: string; updated_at: string; created_at: string },
+          b: { id: string; updated_at: string; created_at: string }
+        ) => {
+          const aStarred = chatPreferences.some(
+            preference => preference.chat_id === a.id && preference.is_starred
+          )
+          const bStarred = chatPreferences.some(
+            preference => preference.chat_id === b.id && preference.is_starred
+          )
+
+          return (
+            Number(bStarred) - Number(aStarred) ||
+            new Date(b.updated_at || b.created_at).getTime() -
+              new Date(a.updated_at || a.created_at).getTime()
+          )
+        }
       )
   }
 
@@ -217,42 +230,46 @@ export const SidebarDataList: FC<SidebarDataListProps> = ({
       >
         {getDataListComponent(contentType, item)}
       </div>
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            className="size-9 shrink-0 opacity-100 focus-visible:opacity-100 sm:opacity-0 sm:group-hover/item:opacity-100"
-            aria-label={`Move ${item.name}`}
-          >
-            <IconFolder size={16} />
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end">
-          <DropdownMenuLabel>Move to folder</DropdownMenuLabel>
-          {item.folder_id && (
-            <DropdownMenuItem onSelect={() => void updateFolder(item.id, null)}>
-              <IconFolderOff className="mr-2" size={16} />
-              Unfile
-            </DropdownMenuItem>
-          )}
-          {folders
-            .filter(folder => folder.id !== item.folder_id)
-            .map(folder => (
+      {contentType !== "chats" && (
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="size-9 shrink-0 opacity-100 focus-visible:opacity-100 sm:opacity-0 sm:group-hover/item:opacity-100"
+              aria-label={`Move ${item.name}`}
+            >
+              <IconFolder size={16} />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuLabel>Move to folder</DropdownMenuLabel>
+            {item.folder_id && (
               <DropdownMenuItem
-                key={folder.id}
-                onSelect={() => void updateFolder(item.id, folder.id)}
+                onSelect={() => void updateFolder(item.id, null)}
               >
-                <IconFolder className="mr-2" size={16} />
-                {folder.name}
+                <IconFolderOff className="mr-2" size={16} />
+                Unfile
               </DropdownMenuItem>
-            ))}
-          {folders.length === 0 && !item.folder_id && (
-            <DropdownMenuItem disabled>No folders available</DropdownMenuItem>
-          )}
-        </DropdownMenuContent>
-      </DropdownMenu>
+            )}
+            {folders
+              .filter(folder => folder.id !== item.folder_id)
+              .map(folder => (
+                <DropdownMenuItem
+                  key={folder.id}
+                  onSelect={() => void updateFolder(item.id, folder.id)}
+                >
+                  <IconFolder className="mr-2" size={16} />
+                  {folder.name}
+                </DropdownMenuItem>
+              ))}
+            {folders.length === 0 && !item.folder_id && (
+              <DropdownMenuItem disabled>No folders available</DropdownMenuItem>
+            )}
+          </DropdownMenuContent>
+        </DropdownMenu>
+      )}
     </div>
   )
 

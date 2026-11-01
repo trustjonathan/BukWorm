@@ -26,14 +26,14 @@ test('No password for signup', async ({ page }) => {
   //validate appropriate error is thrown for missing password when signing up
   await expect(page.getByText('Signup requires a valid')).toBeVisible();
 });
-test('invalid username for signup', async ({ page }) => {
+test('invalid email is rejected before signup', async ({ page }) => {
   await page.goto('http://localhost:3000/login');
   
-  await page.getByPlaceholder('you@example.com').fill('dummyEmail');
+  const email = page.getByPlaceholder('you@example.com');
+  await email.fill('dummyEmail');
   await page.getByPlaceholder('••••••••').fill('dummypassword');
   await page.getByRole('button', { name: 'Sign Up' }).click();
-  //validate appropriate error is thrown for invalid username when signing up
-  await expect(page.getByText('Unable to validate email')).toBeVisible();
+  await expect(email).toBeInvalid();
 });
 test('password reset message', async ({ page }) => {
   await page.goto('http://localhost:3000/login');

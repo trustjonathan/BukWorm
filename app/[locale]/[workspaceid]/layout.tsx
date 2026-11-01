@@ -14,11 +14,17 @@ import { getAssistantImageFromStorage } from "@/db/storage/assistant-images"
 import { getToolWorkspacesByWorkspaceId } from "@/db/tools"
 import { getWorkspaceById } from "@/db/workspaces"
 import { convertBlobToBase64 } from "@/lib/blob-to-b64"
-import { DEFAULT_GOOGLE_MODEL_ID } from "@/lib/models/llm/google-llm-list"
+import { getDefaultModelId } from "@/lib/models/llm/llm-list"
 import { supabase } from "@/lib/supabase/browser-client"
-import { LLMID } from "@/types"
 import { useParams, useRouter } from "next/navigation"
-import { ReactNode, useCallback, useContext, useEffect, useState } from "react"
+import {
+  ReactNode,
+  useCallback,
+  useContext,
+  useEffect,
+  useRef,
+  useState
+} from "react"
 import Loading from "../loading"
 import { toast } from "sonner"
 
@@ -55,8 +61,15 @@ export default function WorkspaceLayout({ children }: WorkspaceLayoutProps) {
     setChatImages,
     setNewMessageFiles,
     setNewMessageImages,
-    setShowFilesDisplay
+    setShowFilesDisplay,
+    profile
   } = useContext(ChatbotUIContext)
+
+  const accountDefaultModel = useRef(profile?.default_model)
+
+  useEffect(() => {
+    accountDefaultModel.current = profile?.default_model
+  }, [profile?.default_model])
 
   const [loading, setLoading] = useState(true)
 
@@ -135,7 +148,9 @@ export default function WorkspaceLayout({ children }: WorkspaceLayoutProps) {
         setTools(toolData.tools)
         setModels(modelData.models)
         setChatSettings({
-          model: (workspace.default_model || DEFAULT_GOOGLE_MODEL_ID) as LLMID,
+          model: getDefaultModelId(
+            accountDefaultModel.current || workspace.default_model
+          ),
           prompt:
             workspace.default_prompt ??
             "You are a friendly, helpful AI assistant.",

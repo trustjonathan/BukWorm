@@ -9,10 +9,14 @@ import {
 } from "@/db/workspaces"
 import { fetchHostedModels } from "@/lib/models/fetch-models"
 import { DEFAULT_GOOGLE_MODEL_ID } from "@/lib/models/llm/google-llm-list"
+import { getDefaultModelId } from "@/lib/models/llm/llm-list"
+import { ModelSelect } from "@/components/models/model-select"
 import { supabase } from "@/lib/supabase/browser-client"
 import { TablesUpdate } from "@/supabase/types"
+import { LLMID } from "@/types"
 import { useRouter } from "next/navigation"
 import { useContext, useEffect, useState } from "react"
+import { toast } from "sonner"
 import { FinishStep } from "../../../components/setup/finish-step"
 import { ProfileStep } from "../../../components/setup/profile-step"
 import {
@@ -33,8 +37,12 @@ export default function SetupPage() {
   const router = useRouter()
 
   const [loading, setLoading] = useState(true)
+  const [nextPath, setNextPath] = useState<string | null>(null)
 
   const [currentStep, setCurrentStep] = useState(1)
+  const [defaultModel, setDefaultModel] = useState<LLMID>(
+    DEFAULT_GOOGLE_MODEL_ID
+  )
 
   // Profile Step
   const [displayName, setDisplayName] = useState("")
@@ -43,35 +51,64 @@ export default function SetupPage() {
 
   useEffect(() => {
     ;(async () => {
+      const requestedNext = new URLSearchParams(window.location.search).get(
+        "next"
+      )
+      const returnPath =
+        requestedNext?.startsWith("/") &&
+        !requestedNext.startsWith("//") &&
+        !requestedNext.includes("\\")
+          ? requestedNext
+          : null
+      setNextPath(returnPath)
+
       const session = (await supabase.auth.getSession()).data.session
 
       if (!session) {
-        return router.push("/login")
+        const nextQuery = returnPath
+          ? `?next=${encodeURIComponent(returnPath)}`
+          : ""
+        return router.push(`/login${nextQuery}`)
       } else {
         const user = session.user
 
         const profile = await getProfileByUserId(user.id)
         setProfile(profile)
         setUsername(profile.username)
+        setDisplayName(profile.display_name || "")
 
-        if (!profile.has_onboarded) {
-          setLoading(false)
-        } else {
-          const data = await fetchHostedModels(profile)
+        const data = await fetchHostedModels(profile)
 
-          if (!data) return
-
+        if (data) {
           setEnvKeyMap(data.envKeyMap)
           setAvailableHostedModels(data.hostedModels)
+          setDefaultModel(
+            getDefaultModelId(
+              profile.default_model || data.hostedModels[0]?.modelId
+            )
+          )
+        } else {
+          toast.error(
+            "Could not load available models. The default model will be used."
+          )
+          setDefaultModel(getDefaultModelId(profile.default_model))
+        }
 
+        if (!profile.has_onboarded) {
+          setCurrentStep(1)
+          setLoading(false)
+        } else if (!profile.default_model) {
+          setCurrentStep(2)
+          setLoading(false)
+        } else {
           const homeWorkspaceId = await getHomeWorkspaceByUserId(
             session.user.id
           )
-          return router.push(`/${homeWorkspaceId}/chat`)
+          return router.push(returnPath || `/${homeWorkspaceId}/chat`)
         }
       }
     })()
-  }, [])
+  }, [router, setAvailableHostedModels, setEnvKeyMap, setProfile])
 
   const handleShouldProceed = (proceed: boolean) => {
     if (proceed) {
@@ -99,6 +136,7 @@ export default function SetupPage() {
       has_onboarded: true,
       display_name: displayName,
       username,
+      default_model: defaultModel,
       use_azure_openai: false
     }
 
@@ -113,7 +151,7 @@ export default function SetupPage() {
     }
 
     const updatedHomeWorkspace = await updateWorkspace(homeWorkspace.id, {
-      default_model: DEFAULT_GOOGLE_MODEL_ID
+      default_model: defaultModel
     })
     setSelectedWorkspace(updatedHomeWorkspace)
     setWorkspaces(
@@ -124,7 +162,7 @@ export default function SetupPage() {
       )
     )
 
-    return router.push(`/${updatedHomeWorkspace.id}/chat`)
+    return router.push(nextPath || `/${updatedHomeWorkspace.id}/chat`)
   }
 
   const renderStep = (stepNum: number) => {
@@ -153,6 +191,23 @@ export default function SetupPage() {
 
       // Finish Step
       case 2:
+        return (
+          <StepContainer
+            stepDescription="Choose the model Matrix AI should use by default in chats and new workspaces."
+            stepNum={currentStep}
+            stepTitle="Choose your default model"
+            onShouldProceed={handleShouldProceed}
+            showNextButton={true}
+            showBackButton={currentStep === 2}
+          >
+            <ModelSelect
+              selectedModelId={defaultModel}
+              onSelectModel={model => setDefaultModel(model)}
+            />
+          </StepContainer>
+        )
+
+      case 3:
         return (
           <StepContainer
             stepDescription="Your account is ready. Matrix AI is powered by Matrix."
