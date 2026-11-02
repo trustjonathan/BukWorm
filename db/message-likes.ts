@@ -18,11 +18,15 @@ export const getMessageLikes = async (messageIds: string[]) => {
 
 export const createMessageLike = async (
   messageId: string,
-  userId: string
+  userId: string,
+  emoji: string
 ): Promise<Tables<"message_likes">> => {
   const { data, error } = await supabase
     .from("message_likes")
-    .insert({ message_id: messageId, user_id: userId })
+    .upsert(
+      { message_id: messageId, user_id: userId, emoji },
+      { onConflict: "message_id,user_id,emoji" }
+    )
     .select("*")
     .single()
 
@@ -33,12 +37,17 @@ export const createMessageLike = async (
   return data
 }
 
-export const deleteMessageLike = async (messageId: string, userId: string) => {
+export const deleteMessageLike = async (
+  messageId: string,
+  userId: string,
+  emoji: string
+) => {
   const { error } = await supabase
     .from("message_likes")
     .delete()
     .eq("message_id", messageId)
     .eq("user_id", userId)
+    .eq("emoji", emoji)
 
   if (error) {
     throw new Error(error.message)

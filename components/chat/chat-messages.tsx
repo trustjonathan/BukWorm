@@ -26,9 +26,9 @@ export const ChatMessages: FC = () => {
   } = useContext(ChatbotUIContext)
   const { handleSendEdit, handleSendMessage } = useChatHandler()
   const [editingMessage, setEditingMessage] = useState<Tables<"messages">>()
-  const [messageLikes, setMessageLikes] = useState<Tables<"message_likes">[]>(
-    []
-  )
+  const [messageReactions, setMessageReactions] = useState<
+    Tables<"message_likes">[]
+  >([])
   const messageIdsKey = chatMessages.map(item => item.message.id).join(",")
   const messageTree = useMemo(
     () => buildMessageTree(chatMessages),
@@ -48,7 +48,7 @@ export const ChatMessages: FC = () => {
   useEffect(() => {
     const messageIds = messageIdsKey.split(",").filter(Boolean)
     if (!isGroupWorkspace || messageIds.length === 0) {
-      setMessageLikes([])
+      setMessageReactions([])
       return
     }
 
@@ -56,7 +56,7 @@ export const ChatMessages: FC = () => {
     const loadLikes = async () => {
       try {
         const likes = await getMessageLikes(messageIds)
-        if (active) setMessageLikes(likes)
+        if (active) setMessageReactions(likes)
       } catch (error) {
         if (active) {
           toast.error(
@@ -84,20 +84,29 @@ export const ChatMessages: FC = () => {
     }
   }, [isGroupWorkspace, messageIdsKey, selectedChat?.id, selectedWorkspace?.id])
 
-  const handleToggleLike = async (messageId: string) => {
+  const handleToggleReaction = async (messageId: string, emoji: string) => {
     if (!profile || !canInteract) return
 
-    const existing = messageLikes.find(
-      like => like.message_id === messageId && like.user_id === profile.user_id
+    const existing = messageReactions.find(
+      reaction =>
+        reaction.message_id === messageId &&
+        reaction.user_id === profile.user_id &&
+        reaction.emoji === emoji
     )
 
     try {
       if (existing) {
-        await deleteMessageLike(messageId, profile.user_id)
-        setMessageLikes(current => current.filter(like => like !== existing))
+        await deleteMessageLike(messageId, profile.user_id, emoji)
+        setMessageReactions(current =>
+          current.filter(reaction => reaction !== existing)
+        )
       } else {
-        const like = await createMessageLike(messageId, profile.user_id)
-        setMessageLikes(current => [...current, like])
+        const reaction = await createMessageLike(
+          messageId,
+          profile.user_id,
+          emoji
+        )
+        setMessageReactions(current => [...current, reaction])
       }
     } catch (error) {
       toast.error(
@@ -155,8 +164,10 @@ export const ChatMessages: FC = () => {
               editingMessageId={editingMessage?.id}
               canInteract={canInteract}
               canDeleteAnyReply={canDeleteAnyReply}
-              messageLikes={messageLikes}
-              onToggleLike={messageId => void handleToggleLike(messageId)}
+              messageReactions={messageReactions}
+              onToggleReaction={(messageId, emoji) =>
+                void handleToggleReaction(messageId, emoji)
+              }
               onDeleteReply={message => void handleDeleteReply(message)}
             />
           ))

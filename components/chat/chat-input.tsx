@@ -4,6 +4,7 @@ import { LLM_LIST } from "@/lib/models/llm/llm-list"
 import {
   IconBolt,
   IconCirclePlus,
+  IconMoodSmile,
   IconPlayerStopFilled,
   IconSend
 } from "@tabler/icons-react"
@@ -19,6 +20,10 @@ import { useChatHandler } from "./chat-hooks/use-chat-handler"
 import { useChatHistoryHandler } from "./chat-hooks/use-chat-history"
 import { usePromptAndCommand } from "./chat-hooks/use-prompt-and-command"
 import { useSelectFileHandler } from "./chat-hooks/use-select-file-handler"
+import {
+  WorkspaceEmojiPicker,
+  WorkspaceMedia
+} from "../messages/workspace-emoji-picker"
 
 interface ChatInputProps {}
 
@@ -36,6 +41,7 @@ export const ChatInput: FC<ChatInputProps> = ({}) => {
     focusAssistant,
     setFocusAssistant,
     userInput,
+    setUserInput,
     chatMessages,
     isGenerating,
     selectedPreset,
@@ -79,6 +85,13 @@ export const ChatInput: FC<ChatInputProps> = ({}) => {
   const isWorkspaceViewer =
     selectedWorkspace?.sharing === "shared" &&
     workspaceRoles[selectedWorkspace.id] === "viewer"
+  const isSharedWorkspace = selectedWorkspace?.sharing === "shared"
+
+  const handleSendMedia = (media: WorkspaceMedia) => {
+    const label = media.type === "stickers" ? "Sticker" : "GIF"
+    const content = `![${label}](${media.url})\n\n[Powered by GIPHY](${media.shareUrl})`
+    void handleSendMessage(content, chatMessages, false)
+  }
 
   useEffect(() => {
     setTimeout(() => {
@@ -230,11 +243,27 @@ export const ChatInput: FC<ChatInputProps> = ({}) => {
         </div>
 
         <>
+          {isSharedWorkspace && !isWorkspaceViewer && (
+            <div className="absolute bottom-3 left-3">
+              <WorkspaceEmojiPicker
+                label="Choose emoji, GIF, or sticker"
+                onSelectEmoji={emoji =>
+                  setUserInput(currentInput => `${currentInput}${emoji}`)
+                }
+                onSelectMedia={handleSendMedia}
+              >
+                <IconMoodSmile size={19} />
+              </WorkspaceEmojiPicker>
+            </div>
+          )}
+
           {!isTemporaryChat && (
             <button
               type="button"
               aria-label="Add attachments"
-              className="text-muted-foreground hover:bg-accent hover:text-accent-foreground focus-visible:ring-ring absolute bottom-3 left-3 flex size-9 items-center justify-center rounded-md focus-visible:outline-none focus-visible:ring-2"
+              className={`text-muted-foreground hover:bg-accent hover:text-accent-foreground focus-visible:ring-ring absolute bottom-3 ${
+                isSharedWorkspace ? "left-12" : "left-3"
+              } flex size-9 items-center justify-center rounded-md focus-visible:outline-none focus-visible:ring-2`}
               onClick={() => fileInputRef.current?.click()}
             >
               <IconCirclePlus />
@@ -260,7 +289,9 @@ export const ChatInput: FC<ChatInputProps> = ({}) => {
 
         <TextareaAutosize
           textareaRef={chatInputRef}
-          className="ring-offset-background placeholder:text-muted-foreground flex w-full resize-none rounded-md border-none bg-transparent px-14 py-2 text-base focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50"
+          className={`ring-offset-background placeholder:text-muted-foreground flex w-full resize-none rounded-md border-none bg-transparent ${
+            isSharedWorkspace ? "pl-24 pr-14" : "px-14"
+          } py-2 text-base focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50`}
           placeholder={
             isTemporaryChat
               ? "Temporary chat — messages are not saved"

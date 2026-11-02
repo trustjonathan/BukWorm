@@ -16,7 +16,6 @@ import {
   IconCopy,
   IconEdit,
   IconFileText,
-  IconHeart,
   IconMoodSmile,
   IconPencil,
   IconRepeat,
@@ -31,6 +30,7 @@ import { MessageMarkdown } from "./message-markdown"
 import { TextareaAutosize } from "../ui/textarea-autosize"
 import { WithTooltip } from "../ui/with-tooltip"
 import { ModelIcon } from "../models/model-icon"
+import { EmojiImage, WorkspaceEmojiPicker } from "./workspace-emoji-picker"
 
 const ICON_SIZE = 32
 
@@ -49,8 +49,8 @@ interface ThreadedMessageProps {
   editingMessageId?: string
   canInteract: boolean
   canDeleteAnyReply: boolean
-  messageLikes: Tables<"message_likes">[]
-  onToggleLike: (messageId: string) => void
+  messageReactions: Tables<"message_likes">[]
+  onToggleReaction: (messageId: string, emoji: string) => void
   onDeleteReply: (message: Tables<"messages">) => void
 }
 
@@ -66,8 +66,8 @@ export const ThreadedMessage: FC<ThreadedMessageProps> = ({
   editingMessageId,
   canInteract,
   canDeleteAnyReply,
-  messageLikes,
-  onToggleLike,
+  messageReactions,
+  onToggleReaction,
   onDeleteReply
 }) => {
   const {
@@ -125,8 +125,18 @@ export const ThreadedMessage: FC<ThreadedMessageProps> = ({
   const authorImage =
     author?.image_url ||
     (message.user_id === profile?.user_id ? profile?.image_url : null)
-  const likes = messageLikes.filter(like => like.message_id === message.id)
-  const isLiked = likes.some(like => like.user_id === profile?.user_id)
+  const reactions = messageReactions.filter(
+    reaction => reaction.message_id === message.id
+  )
+  const reactionCounts = reactions.reduce<
+    Record<string, { count: number; selected: boolean }>
+  >((counts, reaction) => {
+    const current = counts[reaction.emoji] || { count: 0, selected: false }
+    current.count += 1
+    current.selected ||= reaction.user_id === profile?.user_id
+    counts[reaction.emoji] = current
+    return counts
+  }, {})
   const isLastAndGenerating =
     isGenerating && !firstTokenReceived && children.length === 0 && isAssistant
 
@@ -513,23 +523,35 @@ export const ThreadedMessage: FC<ThreadedMessageProps> = ({
           </div>
 
           {!isSystem && canInteract && (
-            <div className="mb-3 mt-1 flex items-center gap-4">
-              <button
-                type="button"
-                aria-label={`${isLiked ? "Unlike" : "Like"} message (${likes.length})`}
-                className={cn(
-                  "flex items-center gap-1 text-xs text-slate-500 transition-colors hover:text-rose-500",
-                  isLiked && "text-rose-500"
-                )}
-                onClick={() => onToggleLike(message.id)}
+            <div className="mb-3 mt-1 flex flex-wrap items-center gap-2">
+              {Object.entries(reactionCounts).map(([emoji, reaction]) => (
+                <button
+                  type="button"
+                  key={emoji}
+                  aria-label={`${emoji}, ${reaction.count} reactions`}
+                  aria-pressed={reaction.selected}
+                  className={cn(
+                    "flex h-8 items-center gap-1 rounded-full border px-2 text-xs transition-colors",
+                    reaction.selected
+                      ? "border-primary/50 bg-primary/10"
+                      : "border-border bg-background hover:bg-accent"
+                  )}
+                  onClick={() => onToggleReaction(message.id, emoji)}
+                >
+                  <EmojiImage emoji={emoji} size={19} />
+                  <span>{reaction.count}</span>
+                </button>
+              ))}
+              <WorkspaceEmojiPicker
+                label="Add reaction"
+                onSelectEmoji={emoji => onToggleReaction(message.id, emoji)}
               >
-                <IconHeart size={15} fill={isLiked ? "currentColor" : "none"} />
-                {likes.length > 0 ? likes.length : "Like"}
-              </button>
+                <IconMoodSmile size={18} />
+              </WorkspaceEmojiPicker>
               <button
                 type="button"
                 aria-label="Reply in thread"
-                className="flex items-center gap-1 text-xs text-slate-500 transition-colors hover:text-cyan-500"
+                className="hover:bg-accent flex h-8 items-center gap-1 rounded-full px-2 text-xs text-slate-500 transition-colors hover:text-cyan-500"
                 onClick={() => setIsReplying(replying => !replying)}
               >
                 <IconArrowBackUp size={15} />
@@ -539,7 +561,7 @@ export const ThreadedMessage: FC<ThreadedMessageProps> = ({
                 <button
                   type="button"
                   aria-label="Delete reply"
-                  className="flex items-center gap-1 text-xs text-slate-500 transition-colors hover:text-rose-500"
+                  className="hover:bg-accent flex h-8 items-center gap-1 rounded-full px-2 text-xs text-slate-500 transition-colors hover:text-rose-500"
                   onClick={() => onDeleteReply(message)}
                 >
                   <IconTrash size={15} />
@@ -675,8 +697,8 @@ export const ThreadedMessage: FC<ThreadedMessageProps> = ({
               editingMessageId={editingMessageId}
               canInteract={canInteract}
               canDeleteAnyReply={canDeleteAnyReply}
-              messageLikes={messageLikes}
-              onToggleLike={onToggleLike}
+              messageReactions={messageReactions}
+              onToggleReaction={onToggleReaction}
               onDeleteReply={onDeleteReply}
             />
           ))}
