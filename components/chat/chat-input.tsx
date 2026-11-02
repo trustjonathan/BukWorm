@@ -20,10 +20,7 @@ import { useChatHandler } from "./chat-hooks/use-chat-handler"
 import { useChatHistoryHandler } from "./chat-hooks/use-chat-history"
 import { usePromptAndCommand } from "./chat-hooks/use-prompt-and-command"
 import { useSelectFileHandler } from "./chat-hooks/use-select-file-handler"
-import {
-  WorkspaceEmojiPicker,
-  WorkspaceMedia
-} from "../messages/workspace-emoji-picker"
+import { WorkspaceEmojiPicker } from "../messages/workspace-emoji-picker"
 
 interface ChatInputProps {}
 
@@ -86,12 +83,6 @@ export const ChatInput: FC<ChatInputProps> = ({}) => {
     selectedWorkspace?.sharing === "shared" &&
     workspaceRoles[selectedWorkspace.id] === "viewer"
   const isSharedWorkspace = selectedWorkspace?.sharing === "shared"
-
-  const handleSendMedia = (media: WorkspaceMedia) => {
-    const label = media.type === "stickers" ? "Sticker" : "GIF"
-    const content = `![${label}](${media.url})\n\n[Powered by GIPHY](${media.shareUrl})`
-    void handleSendMessage(content, chatMessages, false)
-  }
 
   useEffect(() => {
     setTimeout(() => {
@@ -246,11 +237,10 @@ export const ChatInput: FC<ChatInputProps> = ({}) => {
           {isSharedWorkspace && !isWorkspaceViewer && (
             <div className="absolute bottom-3 left-3">
               <WorkspaceEmojiPicker
-                label="Choose emoji, GIF, or sticker"
+                label="Choose emoji"
                 onSelectEmoji={emoji =>
                   setUserInput(currentInput => `${currentInput}${emoji}`)
                 }
-                onSelectMedia={handleSendMedia}
               >
                 <IconMoodSmile size={19} />
               </WorkspaceEmojiPicker>

@@ -8,9 +8,8 @@ Gemini Flash-Lite is the default chat model. Set `GOOGLE_GEMINI_API_KEY` in
 `.env.local` to provide Gemini access for the workspace, or configure a
 personal Gemini key in Profile Settings.
 
-Shared workspaces include emoji reactions and a GIF/sticker picker. Set the
-server-only `GIPHY_API_KEY` in `.env.local` to enable GIPHY search. Emoji names
-are loaded from the [RealityRipple emoji directory](https://github.com/RealityRipple/emoji);
+Shared workspaces include emoji reactions and a searchable emoji picker. Emoji
+names are loaded from the [RealityRipple emoji directory](https://github.com/RealityRipple/emoji);
 the picker uses Twemoji graphics by Twitter, licensed under
 [CC BY 4.0](https://github.com/twitter/twemoji/blob/master/LICENSE-GRAPHICS).
 
@@ -279,7 +278,6 @@ In environment variables, add the following from the values you got above:
 - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
 - `SUPABASE_SERVICE_ROLE_KEY`
 - `NEXT_PUBLIC_OLLAMA_URL` (only needed when using local Ollama models; default: `http://localhost:11434`)
-- `GIPHY_API_KEY` (optional; enables GIF and sticker search in shared workspaces)
 
 You can also add API keys as environment variables.
 
