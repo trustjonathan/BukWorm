@@ -2,6 +2,7 @@ import { Tables } from "@/supabase/types"
 import { ChatPayload, MessageImage } from "@/types"
 import { encode } from "gpt-tokenizer"
 import { getBase64FromDataURL, getMediaTypeFromDataURL } from "@/lib/utils"
+import { appendMatrixDefaultInstructions } from "@/lib/matrix-default-instructions"
 
 const buildBasePrompt = (
   prompt: string,
@@ -29,7 +30,7 @@ const buildBasePrompt = (
 
   fullPrompt += `User Instructions:\n${prompt}`
 
-  return fullPrompt
+  return appendMatrixDefaultInstructions(fullPrompt)
 }
 
 export async function buildFinalMessages(
@@ -54,7 +55,7 @@ export async function buildFinalMessages(
   )
 
   const CHUNK_SIZE = chatSettings.contextLength
-  const PROMPT_TOKENS = encode(chatSettings.prompt).length
+  const PROMPT_TOKENS = encode(BUILT_PROMPT).length
 
   let remainingTokens = CHUNK_SIZE - PROMPT_TOKENS
 
