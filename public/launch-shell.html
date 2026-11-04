@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, viewport-fit=cover"
+    />
+    <meta name="theme-color" content="#0b1220" />
+    <meta name="color-scheme" content="dark" />
+    <title>Matrix AI</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        background: #0b1220;
+        color: #f1f5f9;
+        font-family:
+          Inter,
+          ui-sans-serif,
+          system-ui,
+          -apple-system,
+          BlinkMacSystemFont,
+          "Segoe UI",
+          sans-serif;
+        font-synthesis: none;
+        text-rendering: optimizeLegibility;
+        -webkit-font-smoothing: antialiased;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        width: 100%;
+        min-height: 100%;
+        margin: 0;
+        overflow: hidden;
+        background: #0b1220;
+      }
+
+      body {
+        display: grid;
+        min-height: 100vh;
+        min-height: 100svh;
+        padding: max(1.25rem, env(safe-area-inset-top)) 1.25rem
+          max(1.25rem, env(safe-area-inset-bottom));
+        place-items: center;
+      }
+
+      main {
+        display: grid;
+        width: min(100%, 24rem);
+        justify-items: center;
+        gap: 1.5rem;
+        text-align: center;
+      }
+
+      .mark {
+        width: 5.5rem;
+        height: 5.5rem;
+        object-fit: contain;
+        filter: drop-shadow(0 0 1.25rem rgb(34 211 238 / 18%));
+        animation: breathe 2.4s ease-in-out infinite;
+      }
+
+      .wait {
+        min-height: 1.5rem;
+        margin: 0;
+        color: #aab8ca;
+        font-size: 0.9375rem;
+        line-height: 1.5;
+        visibility: hidden;
+        opacity: 0;
+        animation: reveal 0s 6s forwards;
+      }
+
+      .retry {
+        min-height: 2.75rem;
+        padding: 0.7rem 1.25rem;
+        border: 0;
+        border-radius: 0.75rem;
+        background: #67e8f9;
+        color: #0b1220;
+        font: inherit;
+        font-weight: 700;
+        cursor: pointer;
+        visibility: hidden;
+        opacity: 0;
+        animation: reveal 0s 15s forwards;
+      }
+
+      .retry:focus-visible {
+        outline: 3px solid #f1f5f9;
+        outline-offset: 3px;
+      }
+
+      @keyframes breathe {
+        0%,
+        100% {
+          opacity: 0.82;
+          transform: scale(0.97);
+        }
+        50% {
+          opacity: 1;
+          transform: scale(1.03);
+        }
+      }
+
+      @keyframes reveal {
+        to {
+          visibility: visible;
+          opacity: 1;
+        }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        *,
+        *::before,
+        *::after {
+          animation-duration: 0.01ms !important;
+          animation-iteration-count: 1 !important;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <img
+        class="mark"
+        src="/matrix-logo-dark.png"
+        alt="Matrix AI"
+        width="88"
+        height="88"
+      />
+      <p class="wait" role="status" aria-live="polite">
+        Taking longer than usual...
+      </p>
+      <form method="get" action="">
+        <button class="retry" type="submit">Retry</button>
+      </form>
+    </main>
+  </body>
+</html>

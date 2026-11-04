@@ -3,6 +3,55 @@ const withBundleAnalyzer = require("@next/bundle-analyzer")({
 })
 
 const apiMethods = ["GET", "POST", "PUT", "PATCH", "DELETE"]
+const navigationFallback = {
+  handlerWillStart: () =>
+    caches
+      .match(new URL("/launch-shell.html", self.registration.scope).href, {
+        ignoreSearch: true
+      })
+      .then(shell =>
+        shell
+          ? caches
+              .open("matrix-navigations")
+              .then(cache =>
+                cache.put(
+                  new Request(
+                    new URL("/launch-shell.html", self.registration.scope).href
+                  ),
+                  shell.clone()
+                )
+              )
+          : undefined
+      ),
+  cacheKeyWillBeUsed: async ({ mode, request }) =>
+    mode === "read"
+      ? new Request(new URL("/launch-shell.html", self.registration.scope).href)
+      : request,
+  cacheWillUpdate: async () => null,
+  fetchDidSucceed: ({ response }) =>
+    response.status >= 500
+      ? Promise.reject(new Error(`Matrix server returned ${response.status}`))
+      : response,
+  handlerDidError: ({ error }) =>
+    caches
+      .match(
+        new URL(
+          error?.message?.startsWith("Matrix server returned ") ||
+          self.navigator.onLine === false
+            ? "/offline.html"
+            : "/launch-shell.html",
+          self.registration.scope
+        ).href,
+        { ignoreSearch: true }
+      )
+      .then(
+        response =>
+          response ||
+          caches.match(new URL("/offline.html", self.registration.scope).href, {
+            ignoreSearch: true
+          })
+      )
+}
 
 const withPWA = require("next-pwa")({
   dest: "public",
@@ -18,17 +67,38 @@ const withPWA = require("next-pwa")({
   runtimeCaching: [
     ...apiMethods.map(method => ({
       urlPattern: ({ url }) =>
-        url.origin === self.location.origin && /^\/api(?:\/|$)/.test(url.pathname),
+        url.origin === self.location.origin &&
+        /^\/api(?:\/|$)/.test(url.pathname),
+      method,
+      handler: "NetworkOnly",
+      options: {}
+    })),
+    ...apiMethods.map(method => ({
+      urlPattern: ({ url }) =>
+        url.origin === self.location.origin &&
+        /^\/(?:[a-z]{2}(?:-[a-z]{2})?\/)?(?:auth|login|signup|logout|setup|invite)(?:\/|$)/i.test(
+          url.pathname
+        ),
+      method,
+      handler: "NetworkOnly",
+      options: {}
+    })),
+    ...apiMethods.map(method => ({
+      urlPattern: ({ url }) =>
+        url.hostname === "supabase.co" || url.hostname.endsWith(".supabase.co"),
       method,
       handler: "NetworkOnly",
       options: {}
     })),
     {
-      urlPattern: ({ url }) =>
-        url.origin === self.location.origin && !/^\/api(?:\/|$)/.test(url.pathname),
+      urlPattern: ({ request }) => request.mode === "navigate",
       method: "GET",
-      handler: "NetworkOnly",
-      options: {}
+      handler: "NetworkFirst",
+      options: {
+        cacheName: "matrix-navigations",
+        networkTimeoutSeconds: 3,
+        plugins: [navigationFallback]
+      }
     }
   ]
 })

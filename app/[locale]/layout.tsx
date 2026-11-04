@@ -1,8 +1,15 @@
 import { Toaster } from "@/components/ui/sonner"
+import { LaunchScreen } from "@/components/ui/launch-screen"
 import { GlobalState } from "@/components/utility/global-state"
 import { Providers } from "@/components/utility/providers"
+import { ServiceWorkerRegistration } from "@/components/utility/service-worker-registration"
 import TranslationsProvider from "@/components/utility/translations-provider"
 import initTranslations from "@/lib/i18n"
+import {
+  LAUNCH_BACKGROUND,
+  LAUNCH_CRITICAL_CSS,
+  THEME_BOOTSTRAP_SCRIPT
+} from "@/lib/launch-screen"
 import { Database } from "@/supabase/types"
 import { createServerClient } from "@supabase/ssr"
 import { Metadata, Viewport } from "next"
@@ -97,10 +104,7 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   viewportFit: "cover",
   interactiveWidget: "resizes-content",
-  themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#f8fafc" },
-    { media: "(prefers-color-scheme: dark)", color: "#121315" }
-  ]
+  themeColor: LAUNCH_BACKGROUND
 }
 
 const i18nNamespaces = ["translation"]
@@ -127,7 +131,14 @@ export default async function RootLayout({
 
   return (
     <html lang="en" suppressHydrationWarning>
+      <head>
+        <meta name="theme-color" content={LAUNCH_BACKGROUND} />
+        <style dangerouslySetInnerHTML={{ __html: LAUNCH_CRITICAL_CSS }} />
+        <script dangerouslySetInnerHTML={{ __html: THEME_BOOTSTRAP_SCRIPT }} />
+      </head>
       <body className={inter.variable}>
+        <LaunchScreen />
+        <ServiceWorkerRegistration />
         <Providers attribute="class" defaultTheme="system">
           <TranslationsProvider
             namespaces={i18nNamespaces}
