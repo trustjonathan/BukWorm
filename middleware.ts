@@ -16,39 +16,43 @@ export async function middleware(request: NextRequest) {
   }
 
   const i18nResult = i18nRouter(request, i18nConfig)
-  if (i18nResult) return i18nResult
 
   try {
     const { supabase, response } = createClient(request)
+    const {
+      data: { user }
+    } = await supabase.auth.getUser()
 
-    const session = await supabase.auth.getSession()
+    const pathSegments = request.nextUrl.pathname.split("/").filter(Boolean)
+    const locale =
+      pathSegments.length === 0
+        ? i18nConfig.defaultLocale
+        : i18nConfig.locales.includes(pathSegments[0])
+          ? pathSegments[0]
+          : null
+    const isLocaleLandingPage =
+      locale !== null &&
+      (pathSegments.length === 0 || pathSegments.length === 1)
 
-    const redirectToChat = session && request.nextUrl.pathname === "/"
-
-    if (redirectToChat) {
-      const { data: homeWorkspace, error } = await supabase
+    if (user && isLocaleLandingPage) {
+      const { data: homeWorkspace } = await supabase
         .from("workspaces")
-        .select("*")
-        .eq("user_id", session.data.session?.user.id)
+        .select("id")
+        .eq("user_id", user.id)
         .eq("is_home", true)
-        .single()
+        .maybeSingle()
 
-      if (!homeWorkspace) {
-        throw new Error(error?.message)
+      if (homeWorkspace) {
+        return NextResponse.redirect(
+          new URL(`/${locale}/${homeWorkspace.id}/chat`, request.url)
+        )
       }
-
-      return NextResponse.redirect(
-        new URL(`/${homeWorkspace.id}/chat`, request.url)
-      )
     }
 
-    return response
+    return i18nResult ?? response
   } catch (e) {
-    return NextResponse.next({
-      request: {
-        headers: request.headers
-      }
-    })
+    console.error("Locale landing redirect failed:", e)
+    return i18nResult ?? NextResponse.next()
   }
 }
 

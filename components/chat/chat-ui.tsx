@@ -8,6 +8,7 @@ import { getMessageFileItemsByMessageId } from "@/db/message-file-items"
 import { getMessagesByChatId } from "@/db/messages"
 import { getMessageImageFromStorage } from "@/db/storage/message-images"
 import { convertBlobToBase64 } from "@/lib/blob-to-b64"
+import { getRandomGreeting } from "@/lib/greetings"
 import { supabase } from "@/lib/supabase/browser-client"
 import { Tables } from "@/supabase/types"
 import useHotkey from "@/lib/hooks/use-hotkey"
@@ -79,7 +80,11 @@ export const ChatUI: FC<ChatUIProps> = ({}) => {
     "connecting" | "connected" | "error"
   >("connecting")
   const chatId = typeof params.chatid === "string" ? params.chatid : null
-  const firstName = profile?.display_name.trim().split(/\s+/)[0]
+  const [greeting, setGreeting] = useState("Hey there")
+
+  useEffect(() => {
+    setGreeting(getRandomGreeting(profile?.display_name))
+  }, [profile?.display_name])
 
   useEffect(() => {
     if (params.chatid) {
@@ -542,7 +547,7 @@ export const ChatUI: FC<ChatUIProps> = ({}) => {
                     priority
                   />
                   <h1 className="text-foreground text-[28px] font-semibold leading-tight tracking-tight">
-                    {firstName ? `Hey, ${firstName}` : "Hey there"}
+                    {greeting}
                   </h1>
                 </div>
               )}

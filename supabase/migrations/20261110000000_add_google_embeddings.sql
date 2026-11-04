@@ -1,12 +1,12 @@
 ALTER TABLE public.file_items
-ADD COLUMN google_embedding vector(768);
+ADD COLUMN google_embedding extensions.vector(768);
 
 CREATE INDEX file_items_google_embedding_idx
 ON public.file_items
-USING hnsw (google_embedding vector_cosine_ops);
+USING hnsw (google_embedding extensions.vector_cosine_ops);
 
 CREATE FUNCTION public.match_file_items_google (
-  query_embedding vector(768),
+  query_embedding extensions.vector(768),
   match_count int DEFAULT null,
   file_ids UUID[] DEFAULT null
 ) RETURNS TABLE (
@@ -26,11 +26,13 @@ BEGIN
     file_id,
     content,
     tokens,
-    1 - (file_items.google_embedding <=> query_embedding) AS similarity
+    1 - (
+      file_items.google_embedding OPERATOR(extensions.<=>) query_embedding
+    ) AS similarity
   FROM public.file_items
   WHERE file_id = ANY(file_ids)
     AND google_embedding IS NOT NULL
-  ORDER BY file_items.google_embedding <=> query_embedding
+  ORDER BY file_items.google_embedding OPERATOR(extensions.<=>) query_embedding
   LIMIT match_count;
 END;
 $$;
