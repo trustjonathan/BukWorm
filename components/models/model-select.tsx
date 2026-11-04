@@ -107,7 +107,7 @@ export const ModelSelect: FC<ModelSelectProps> = ({
       </DropdownMenuTrigger>
 
       <DropdownMenuContent
-        className="space-y-2 overflow-auto p-2"
+        className="max-h-[calc(100dvh-1.5rem)] max-w-[calc(100vw-1.5rem)] space-y-2 overflow-auto p-2"
         style={{ width: triggerRef.current?.offsetWidth }}
         align="start"
       >
@@ -119,7 +119,7 @@ export const ModelSelect: FC<ModelSelectProps> = ({
           onChange={e => setSearch(e.target.value)}
         />
 
-        <div className="max-h-[300px] overflow-auto">
+        <div className="max-h-[min(300px,40dvh)] overflow-auto">
           {Object.entries(groupedModels).map(([provider, models]) => {
             const filteredModels = models
               .filter(model => {

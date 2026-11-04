@@ -250,6 +250,14 @@ In the text tabs, click on "Providers" and make sure "Email" is enabled.
 
 We recommend turning off "Confirm email" for your own personal instance.
 
+For hosted deployments with email confirmation enabled, set the Supabase
+Authentication URL Configuration **Site URL** to your public app URL and add
+`https://<your-domain>/auth/callback` to the allowed redirect URLs. Set
+`NEXT_PUBLIC_SITE_URL` to that same public URL in the app environment (for
+example, `https://bukworm.onrender.com`). Render's `RENDER_EXTERNAL_URL` is
+used as a fallback. Do not use the internal server URL or `localhost` for a
+hosted deployment.
+
 #### 4. Connect to Hosted DB
 
 Open up your repository for your hosted instance of Chatbot UI.

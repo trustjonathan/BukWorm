@@ -42,10 +42,10 @@ export const StepContainer: FC<StepContainerProps> = ({
 
   return (
     <Card
-      className="max-h-[calc(100vh-60px)] w-[600px] overflow-auto"
+      className="flex max-h-[calc(100dvh-1.5rem)] w-full max-w-[600px] flex-col overflow-hidden"
       onKeyDown={handleKeyDown}
     >
-      <CardHeader>
+      <CardHeader className="shrink-0 p-4 sm:p-6">
         <CardTitle className="flex justify-between">
           <div>{stepTitle}</div>
 
@@ -57,9 +57,11 @@ export const StepContainer: FC<StepContainerProps> = ({
         <CardDescription>{stepDescription}</CardDescription>
       </CardHeader>
 
-      <CardContent className="space-y-4">{children}</CardContent>
+      <CardContent className="min-h-0 flex-1 space-y-4 overflow-y-auto px-4 pb-4 pt-0 sm:px-6">
+        {children}
+      </CardContent>
 
-      <CardFooter className="flex justify-between">
+      <CardFooter className="shrink-0 justify-between px-4 pb-4 pt-0 sm:px-6">
         <div>
           {showBackButton && (
             <Button

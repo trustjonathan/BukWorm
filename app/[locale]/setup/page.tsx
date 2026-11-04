@@ -173,7 +173,7 @@ export default function SetupPage() {
           <StepContainer
             stepDescription="Let's create your profile."
             stepNum={currentStep}
-            stepTitle="Welcome to BukWorm"
+            stepTitle="Welcome to Matrix AI"
             onShouldProceed={handleShouldProceed}
             showNextButton={!!(username && usernameAvailable)}
             showBackButton={false}
@@ -230,7 +230,7 @@ export default function SetupPage() {
   }
 
   return (
-    <div className="flex h-full items-center justify-center">
+    <div className="flex min-h-full w-full items-center justify-center overflow-y-auto p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-[max(0.75rem,env(safe-area-inset-top))] sm:px-6">
       {renderStep(currentStep)}
     </div>
   )

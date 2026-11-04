@@ -1,4 +1,6 @@
 import { Brand } from "@/components/ui/brand"
+import { SignupSubmitButton } from "@/components/auth/signup-submit-button"
+import { SignupReturnHandler } from "@/components/auth/signup-return-handler"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { SubmitButton } from "@/components/ui/submit-button"
@@ -9,6 +11,7 @@ import { get } from "@vercel/edge-config"
 import { Metadata } from "next"
 import { cookies, headers } from "next/headers"
 import { redirect } from "next/navigation"
+import { getSiteUrl } from "@/lib/site-url"
 
 export const metadata: Metadata = {
   title: "Login"
@@ -128,26 +131,17 @@ export default async function Login({
 
     const cookieStore = cookies()
     const supabase = createClient(cookieStore)
-    const origin = headers().get("origin")
-
-    if (!origin) {
-      const nextQuery = nextPath ? `&next=${encodeURIComponent(nextPath)}` : ""
-      return redirect(
-        `/login?message=${encodeURIComponent(
-          "Unable to start email confirmation. Please try signing up again."
-        )}${nextQuery}`
-      )
-    }
+    const siteUrl = getSiteUrl(headers())
 
     const setupPath = nextPath
-      ? `/setup?next=${encodeURIComponent(nextPath)}`
-      : "/setup"
+      ? `/${locale}/setup?next=${encodeURIComponent(nextPath)}`
+      : `/${locale}/setup`
 
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: {
-        emailRedirectTo: `${origin}/auth/callback?next=${encodeURIComponent(
+        emailRedirectTo: `${siteUrl}/auth/callback?next=${encodeURIComponent(
           setupPath
         )}`
       }
@@ -172,13 +166,20 @@ export default async function Login({
   const handleResetPassword = async (formData: FormData) => {
     "use server"
 
-    const origin = headers().get("origin")
-    const email = formData.get("email") as string
+    const siteUrl = getSiteUrl(headers())
+    const emailValue = formData.get("email")
+    const email = typeof emailValue === "string" ? emailValue.trim() : ""
+    if (!email) {
+      return redirect(
+        `/${locale}/login?message=${encodeURIComponent("Enter your email address.")}`
+      )
+    }
+
     const cookieStore = cookies()
     const supabase = createClient(cookieStore)
 
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${origin}/auth/callback?next=/login/password`
+      redirectTo: `${siteUrl}/auth/callback?next=/${locale}/login/password`
     })
 
     if (error) {
@@ -191,10 +192,12 @@ export default async function Login({
   return (
     <div className="flex w-full flex-1 flex-col justify-center gap-2 px-8 sm:max-w-md">
       <form
+        id="auth-form"
         className="animate-in text-foreground flex w-full flex-1 flex-col justify-center gap-2"
         action="/api/auth/signin"
         method="post"
       >
+        <SignupReturnHandler />
         <input type="hidden" name="locale" value={locale} />
         {nextPath && <input type="hidden" name="next" value={nextPath} />}
         <Brand />
@@ -224,12 +227,10 @@ export default async function Login({
           Login
         </SubmitButton>
 
-        <SubmitButton
-          formAction={signUp}
+        <SignupSubmitButton
+          action={signUp}
           className="border-foreground/20 mb-2 rounded-md border px-4 py-2"
-        >
-          Sign Up
-        </SubmitButton>
+        />
 
         <div className="text-muted-foreground mt-1 flex justify-center text-sm">
           <span className="mr-1">Forgot your password?</span>
