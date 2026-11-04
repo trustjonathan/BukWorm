@@ -141,7 +141,11 @@ export const ChatMessages: FC = () => {
   }
 
   return (
-    <div className="mx-auto flex w-full max-w-[760px] flex-col gap-2 px-4 py-6">
+    <div
+      className={`mx-auto flex w-full max-w-[760px] flex-col gap-2 px-4 ${
+        chatMessages.length === 0 ? "py-0" : "py-6"
+      }`}
+    >
       {isGroupWorkspace
         ? messageTree.map((node, index) => (
             <ThreadedMessage

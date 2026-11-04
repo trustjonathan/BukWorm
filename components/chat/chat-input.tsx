@@ -6,11 +6,11 @@ import {
   IconCirclePlus,
   IconMoodSmile,
   IconPlayerStopFilled,
-  IconSend
+  IconSend,
+  IconSpy
 } from "@tabler/icons-react"
 import Image from "next/image"
 import { FC, useContext, useEffect, useRef, useState } from "react"
-import { useTranslation } from "react-i18next"
 import { toast } from "sonner"
 import { Input } from "../ui/input"
 import { TextareaAutosize } from "../ui/textarea-autosize"
@@ -25,8 +25,6 @@ import { WorkspaceEmojiPicker } from "../messages/workspace-emoji-picker"
 interface ChatInputProps {}
 
 export const ChatInput: FC<ChatInputProps> = ({}) => {
-  const { t } = useTranslation()
-
   useHotkey("l", () => {
     handleFocusChatInput()
   })
@@ -228,14 +226,14 @@ export const ChatInput: FC<ChatInputProps> = ({}) => {
         )}
       </div>
 
-      <div className="border-border bg-card focus-within:ring-ring/30 relative mt-3 flex min-h-[60px] w-full items-center justify-center rounded-xl border shadow-sm transition-shadow focus-within:ring-2">
+      <div className="border-border bg-card focus-within:ring-ring/40 relative mt-3 flex min-h-[60px] w-full items-end rounded-[28px] border p-2 shadow-sm transition-shadow focus-within:ring-2 sm:rounded-xl">
         <div className="absolute bottom-[76px] left-0 max-h-[300px] w-full overflow-auto rounded-xl dark:border-none">
           <ChatCommandInput />
         </div>
 
         <>
-          {isSharedWorkspace && !isWorkspaceViewer && (
-            <div className="absolute bottom-3 left-3">
+          {isSharedWorkspace && !isWorkspaceViewer && !isTemporaryChat && (
+            <div className="absolute bottom-2 left-2 flex size-11 items-center justify-center sm:size-9">
               <WorkspaceEmojiPicker
                 label="Choose emoji"
                 onSelectEmoji={emoji =>
@@ -247,16 +245,25 @@ export const ChatInput: FC<ChatInputProps> = ({}) => {
             </div>
           )}
 
+          {isTemporaryChat && (
+            <div
+              className="text-muted-foreground absolute bottom-2 left-2 flex size-11 items-center justify-center sm:size-9"
+              aria-hidden="true"
+            >
+              <IconSpy size={20} />
+            </div>
+          )}
+
           {!isTemporaryChat && (
             <button
               type="button"
               aria-label="Add attachments"
-              className={`text-muted-foreground hover:bg-accent hover:text-accent-foreground focus-visible:ring-ring absolute bottom-3 ${
-                isSharedWorkspace ? "left-12" : "left-3"
-              } flex size-9 items-center justify-center rounded-md focus-visible:outline-none focus-visible:ring-2`}
+              className={`text-muted-foreground hover:bg-accent hover:text-accent-foreground focus-visible:ring-ring focus-visible:ring-offset-background absolute bottom-2 flex size-11 items-center justify-center rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 ${
+                isSharedWorkspace ? "left-14" : "left-2"
+              } sm:size-9`}
               onClick={() => fileInputRef.current?.click()}
             >
-              <IconCirclePlus />
+              <IconCirclePlus size={23} />
             </button>
           )}
 
@@ -279,32 +286,33 @@ export const ChatInput: FC<ChatInputProps> = ({}) => {
 
         <TextareaAutosize
           textareaRef={chatInputRef}
-          className={`ring-offset-background placeholder:text-muted-foreground flex w-full resize-none rounded-md border-none bg-transparent ${
-            isSharedWorkspace ? "pl-24 pr-14" : "px-14"
-          } py-2 text-base focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50`}
-          placeholder={
+          ariaLabel={
             isTemporaryChat
-              ? "Temporary chat — messages are not saved"
-              : selectedWorkspace?.sharing === "shared"
-                ? "Message the group. Mention @Matrix to get an AI response."
-                : t("Ask Matrix anything... (starts a new thread)")
+              ? "Message Matrix AI in incognito mode"
+              : "Message Matrix AI"
           }
+          className={`ring-offset-background placeholder:text-muted-foreground min-h-11 flex-1 resize-none rounded-md border-none bg-transparent ${
+            isSharedWorkspace && !isTemporaryChat
+              ? "pl-[7.25rem] pr-14"
+              : "pl-[3.75rem] pr-14"
+          } py-2 text-base leading-6 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50`}
+          placeholder={isTemporaryChat ? "" : "Ask Matrix"}
           onValueChange={handleInputChange}
           value={userInput}
           minRows={1}
-          maxRows={18}
+          maxRows={6}
           onKeyDown={handleKeyDown}
           onPaste={handlePaste}
           onCompositionStart={() => setIsTyping(true)}
           onCompositionEnd={() => setIsTyping(false)}
         />
 
-        <div className="absolute bottom-3 right-3">
+        <div className="absolute bottom-2 right-2">
           {isGenerating ? (
             <button
               type="button"
               aria-label="Stop generating"
-              className="text-destructive hover:bg-destructive/10 focus-visible:ring-ring flex size-9 items-center justify-center rounded-md focus-visible:outline-none focus-visible:ring-2"
+              className="text-destructive hover:bg-destructive/10 focus-visible:ring-ring focus-visible:ring-offset-background flex size-11 items-center justify-center rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 sm:size-9"
               onClick={handleStopMessage}
             >
               <IconPlayerStopFilled />
@@ -314,10 +322,14 @@ export const ChatInput: FC<ChatInputProps> = ({}) => {
               type="button"
               aria-label="Send message"
               disabled={!userInput}
-              className="bg-primary text-primary-foreground hover:bg-primary/90 focus-visible:ring-ring flex size-9 items-center justify-center rounded-md shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-2 disabled:cursor-not-allowed disabled:opacity-50"
+              className={`focus-visible:ring-ring focus-visible:ring-offset-background flex size-11 items-center justify-center rounded-full shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:cursor-not-allowed sm:size-9 ${
+                userInput
+                  ? "bg-primary text-primary-foreground hover:bg-primary/90"
+                  : "bg-muted text-muted-foreground"
+              }`}
               onClick={() => handleSendMessage(userInput, chatMessages, false)}
             >
-              <IconSend />
+              <IconSend size={20} />
             </button>
           )}
         </div>

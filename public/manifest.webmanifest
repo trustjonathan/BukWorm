@@ -5,8 +5,8 @@
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
-  "theme_color": "#0e121b",
-  "background_color": "#f8fafc",
+  "theme_color": "#121315",
+  "background_color": "#121315",
   "icons": [
     {
       "src": "/icons/matrix-192.png",

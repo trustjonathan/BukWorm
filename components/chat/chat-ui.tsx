@@ -16,10 +16,9 @@ import { getDefaultModelId } from "@/lib/models/llm/llm-list"
 import {
   IconBolt,
   IconCircleFilled,
-  IconEyeOff,
   IconLayoutSidebar,
   IconShare,
-  IconSparkles
+  IconSpy
 } from "@tabler/icons-react"
 import Image from "next/image"
 import { useParams } from "next/navigation"
@@ -79,6 +78,7 @@ export const ChatUI: FC<ChatUIProps> = ({}) => {
     "connecting" | "connected" | "error"
   >("connecting")
   const chatId = typeof params.chatid === "string" ? params.chatid : null
+  const firstName = profile?.display_name.trim().split(/\s+/)[0]
 
   useEffect(() => {
     const fetchData = async () => {
@@ -403,9 +403,8 @@ export const ChatUI: FC<ChatUIProps> = ({}) => {
   return (
     <div className="bg-background text-foreground relative flex h-full min-w-0 overflow-hidden transition-colors">
       <main className="relative z-10 flex min-w-0 flex-1 flex-col">
-        <header className="border-border bg-background/95 flex min-h-[64px] items-center justify-between gap-2 border-b px-3 sm:gap-3 sm:px-6">
+        <header className="border-border bg-background flex min-h-14 items-center justify-between gap-2 border-b px-3 sm:min-h-[64px] sm:gap-3 sm:px-6">
           <div className="flex min-w-0 flex-1 items-center gap-2.5">
-            {/* Sidebar toggle button (visible on all screens) */}
             <Button
               variant="ghost"
               size="icon"
@@ -416,60 +415,53 @@ export const ChatUI: FC<ChatUIProps> = ({}) => {
                   return next
                 })
               }}
-              className="size-9 shrink-0 rounded-xl text-slate-600 hover:bg-slate-200/80 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-100"
+              className="text-muted-foreground size-11 shrink-0 rounded-full sm:size-9"
               aria-label="Toggle sidebar"
             >
               <IconLayoutSidebar size={20} />
             </Button>
 
-            <div className="min-w-0 flex-1">
-              <div className="truncate text-sm font-semibold text-slate-900 dark:text-slate-100">
-                {selectedChat?.name || "Matrix AI"}
-              </div>
-              <div className="mt-0.5 hidden items-center gap-1.5 text-xs text-slate-500 sm:flex dark:text-slate-400">
-                {isTemporaryChat ? (
-                  <>
-                    <IconEyeOff
-                      size={13}
-                      className="text-cyan-600 dark:text-cyan-400"
+            {selectedChat && (
+              <div className="min-w-0 flex-1">
+                <div className="truncate text-sm font-semibold">
+                  {selectedChat.name}
+                </div>
+                <div className="text-muted-foreground mt-0.5 hidden items-center gap-1.5 text-xs sm:flex">
+                  {isTemporaryChat ? (
+                    <>
+                      <IconSpy size={13} />
+                      Incognito chat · not saved to Matrix
+                    </>
+                  ) : (
+                    "Matrix-powered · Streaming responses"
+                  )}
+                </div>
+                {chatId && !isTemporaryChat && (
+                  <div
+                    className="text-muted-foreground mt-1 flex items-center gap-1.5 text-[11px]"
+                    role="status"
+                    aria-live="polite"
+                  >
+                    <IconCircleFilled
+                      size={8}
+                      className={
+                        realtimeStatus === "connected"
+                          ? "text-emerald-500"
+                          : realtimeStatus === "error"
+                            ? "text-destructive"
+                            : "text-amber-500"
+                      }
+                      aria-hidden="true"
                     />
-                    Temporary chat · not saved to Matrix
-                  </>
-                ) : (
-                  <>
-                    <IconSparkles
-                      size={13}
-                      className="text-cyan-600 dark:text-cyan-400"
-                    />
-                    Matrix-powered · Streaming responses
-                  </>
+                    {realtimeStatus === "connected"
+                      ? "Live updates connected"
+                      : realtimeStatus === "error"
+                        ? "Live updates unavailable"
+                        : "Connecting to live updates"}
+                  </div>
                 )}
               </div>
-              {chatId && !isTemporaryChat && (
-                <div
-                  className="text-muted-foreground mt-1 flex items-center gap-1.5 text-[11px]"
-                  role="status"
-                  aria-live="polite"
-                >
-                  <IconCircleFilled
-                    size={8}
-                    className={
-                      realtimeStatus === "connected"
-                        ? "text-emerald-500"
-                        : realtimeStatus === "error"
-                          ? "text-destructive"
-                          : "text-amber-500"
-                    }
-                    aria-hidden="true"
-                  />
-                  {realtimeStatus === "connected"
-                    ? "Live updates connected"
-                    : realtimeStatus === "error"
-                      ? "Live updates unavailable"
-                      : "Connecting to live updates"}
-                </div>
-              )}
-            </div>
+            )}
           </div>
           <div className="flex shrink-0 items-center gap-1">
             {selectedChat && !isTemporaryChat && (
@@ -488,76 +480,57 @@ export const ChatUI: FC<ChatUIProps> = ({}) => {
             <Button
               type="button"
               variant="ghost"
-              size="icon"
-              className={`size-9 ${
-                isTemporaryChat ? "bg-accent text-accent-foreground" : ""
+              className={`min-h-11 gap-2 rounded-full px-3 text-xs font-medium sm:min-h-9 ${
+                isTemporaryChat
+                  ? "bg-accent text-accent-foreground"
+                  : "text-muted-foreground"
               }`}
-              aria-label={
-                isTemporaryChat ? "Exit temporary chat" : "Start temporary chat"
-              }
+              aria-label={`Incognito chat ${isTemporaryChat ? "on" : "off"}`}
               aria-pressed={isTemporaryChat}
-              title={
-                isTemporaryChat ? "Exit temporary chat" : "Start temporary chat"
-              }
+              title="Toggle incognito mode"
               onClick={() => void handleTemporaryChatToggle()}
             >
-              <IconEyeOff size={18} />
+              <IconSpy size={18} />
+              {isTemporaryChat && <span className="font-semibold">On</span>}
             </Button>
           </div>
         </header>
 
         <div className="flex min-h-0 flex-1">
           <div className="relative flex min-w-0 flex-1 flex-col">
-            {chatMessages.length === 0 && (
-              <div
-                className="pointer-events-none absolute inset-x-0 top-0 h-[55%] overflow-hidden"
-                aria-hidden="true"
-              >
-                <div className="absolute -left-24 -top-32 size-[28rem] rounded-full bg-cyan-300/10 blur-3xl dark:bg-cyan-500/10" />
-                <div className="absolute -right-24 -top-24 size-[28rem] rounded-full bg-indigo-300/10 blur-3xl dark:bg-indigo-500/10" />
-              </div>
-            )}
-
-            {chatMessages.length === 0 && (
-              <div className="pointer-events-none absolute inset-x-4 top-[24%] z-0 text-center">
-                <div className="mx-auto mb-5 flex size-20 items-center justify-center">
-                  <Image
-                    src="/matrix-logo-light.png"
-                    alt="Matrix AI"
-                    width={80}
-                    height={80}
-                    className="block object-contain dark:hidden"
-                    priority
-                  />
-                  <Image
-                    src="/matrix-logo-dark.png"
-                    alt="Matrix AI"
-                    width={80}
-                    height={80}
-                    className="hidden object-contain dark:block"
-                    priority
-                  />
-                </div>
-                <div className="text-foreground text-xl font-bold tracking-tight">
-                  Matrix AI Workspace
-                </div>
-                <p className="text-muted-foreground mx-auto mt-2 max-w-lg text-sm leading-relaxed">
-                  Ask Matrix anything. Ready with thoughtful, step-by-step
-                  reasoning and context-aware discussion.
-                </p>
-              </div>
-            )}
-
             <div
               ref={messagesContainerRef}
               className="relative z-[1] flex min-h-0 flex-1 flex-col overflow-auto"
               onScroll={handleScroll}
             >
+              {chatMessages.length === 0 && (
+                <div className="flex min-h-full flex-1 flex-col items-center justify-center gap-6 px-4 py-8 text-center">
+                  <Image
+                    src="/matrix-logo-light.png"
+                    alt=""
+                    width={56}
+                    height={56}
+                    className="block size-14 object-contain dark:hidden"
+                    priority
+                  />
+                  <Image
+                    src="/matrix-logo-dark.png"
+                    alt=""
+                    width={56}
+                    height={56}
+                    className="hidden size-14 object-contain dark:block"
+                    priority
+                  />
+                  <h1 className="text-foreground text-[28px] font-semibold leading-tight tracking-tight">
+                    {firstName ? `Hey, ${firstName}` : "Hey there"}
+                  </h1>
+                </div>
+              )}
               <ChatMessages />
               <div ref={messagesEndRef} />
             </div>
 
-            <div className="relative z-10 w-full px-3 pb-3 pt-2 sm:px-5 sm:pb-5">
+            <div className="relative z-10 mx-auto w-full max-w-4xl px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-2 sm:px-5 sm:pb-5">
               <div className="pointer-events-none absolute inset-x-0 bottom-full mb-2 flex justify-center">
                 <ChatScrollButtons
                   isAtBottom={isAtBottom}

@@ -2,8 +2,25 @@ import { Database, Tables } from "@/supabase/types"
 import { VALID_ENV_KEYS } from "@/types/valid-keys"
 import { createServerClient } from "@supabase/ssr"
 import { cookies } from "next/headers"
+import { v4 as uuidv4 } from "uuid"
 
-export async function getServerProfile() {
+export class ServerProfileError extends Error {
+  constructor(
+    message: string,
+    readonly status: number
+  ) {
+    super(message)
+    this.name = "ServerProfileError"
+  }
+}
+
+interface GetServerProfileOptions {
+  includeEnvironmentKeys?: boolean
+}
+
+export async function getServerProfile({
+  includeEnvironmentKeys = true
+}: GetServerProfileOptions = {}) {
   const cookieStore = cookies()
   const supabase = createServerClient<Database>(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -19,22 +36,66 @@ export async function getServerProfile() {
 
   const user = (await supabase.auth.getUser()).data.user
   if (!user) {
-    throw new Error("User not found")
+    throw new ServerProfileError("Sign in to use Gemini chat.", 401)
   }
 
-  const { data: profile } = await supabase
+  const { data: profile, error: profileError } = await supabase
     .from("profiles")
     .select("*")
     .eq("user_id", user.id)
-    .single()
+    .maybeSingle()
 
-  if (!profile) {
-    throw new Error("Profile not found")
+  if (profileError) {
+    throw profileError
   }
 
-  const profileWithKeys = addApiKeysToProfile(profile)
+  let resolvedProfile = profile
+  if (!resolvedProfile) {
+    const metadataName =
+      typeof user.user_metadata?.full_name === "string"
+        ? user.user_metadata.full_name
+        : typeof user.user_metadata?.name === "string"
+          ? user.user_metadata.name
+          : user.email?.split("@")[0] || ""
+    const username = `user${uuidv4().replace(/-/g, "").slice(0, 16)}`
+    const { data: createdProfile, error: createError } = await supabase
+      .from("profiles")
+      .insert({
+        user_id: user.id,
+        bio: "",
+        display_name: metadataName.trim().slice(0, 100),
+        image_path: "",
+        image_url: "",
+        profile_context: "",
+        use_azure_openai: false,
+        username
+      })
+      .select("*")
+      .single()
 
-  return profileWithKeys
+    if (createError?.code === "23505") {
+      const { data: concurrentProfile, error: retryError } = await supabase
+        .from("profiles")
+        .select("*")
+        .eq("user_id", user.id)
+        .maybeSingle()
+
+      if (retryError) throw retryError
+      if (concurrentProfile) resolvedProfile = concurrentProfile
+    } else if (createError) {
+      throw createError
+    } else {
+      resolvedProfile = createdProfile
+    }
+
+    if (!resolvedProfile) {
+      throw new Error("Unable to create the signed-in user's profile.")
+    }
+  }
+
+  return includeEnvironmentKeys
+    ? addApiKeysToProfile(resolvedProfile)
+    : resolvedProfile
 }
 
 function addApiKeysToProfile(profile: Tables<"profiles">) {
