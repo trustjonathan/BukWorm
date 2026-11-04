@@ -78,68 +78,6 @@ export default async function Login({
     return redirect(`/${homeWorkspace.id}/chat`)
   }
 
-  const signIn = async (formData: FormData) => {
-    "use server"
-
-    const email = formData.get("email") as string
-    const password = formData.get("password") as string
-    const cookieStore = cookies()
-    const supabase = createClient(cookieStore)
-
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email,
-      password
-    })
-
-    if (error) {
-      const nextQuery = nextPath ? `&next=${encodeURIComponent(nextPath)}` : ""
-      return redirect(
-        `/login?message=${encodeURIComponent(error.message)}${nextQuery}`
-      )
-    }
-
-    const { data: profile, error: profileError } = await supabase
-      .from("profiles")
-      .select("default_model")
-      .eq("user_id", data.user.id)
-      .single()
-
-    if (profileError) {
-      throw new Error(`Could not load your profile: ${profileError.message}`)
-    }
-
-    if (!profile.default_model) {
-      return redirect(setupPath)
-    }
-
-    if (nextPath) {
-      return redirect(nextPath)
-    }
-
-    const { data: homeWorkspace, error: homeWorkspaceError } = await supabase
-      .from("workspaces")
-      .select("*")
-      .eq("user_id", data.user.id)
-      .eq("is_home", true)
-      .single()
-
-    if (!homeWorkspace) {
-      throw new Error(
-        homeWorkspaceError?.message || "An unexpected error occurred"
-      )
-    }
-
-    cookieStore.set("matrix_show_landing_after_login", "1", {
-      httpOnly: true,
-      sameSite: "lax",
-      secure: process.env.NODE_ENV === "production",
-      path: "/",
-      maxAge: 120
-    })
-
-    return redirect(`/${locale}`)
-  }
-
   const getEnvVarOrEdgeConfigValue = async (name: string) => {
     "use server"
     if (process.env.EDGE_CONFIG) {
@@ -254,8 +192,11 @@ export default async function Login({
     <div className="flex w-full flex-1 flex-col justify-center gap-2 px-8 sm:max-w-md">
       <form
         className="animate-in text-foreground flex w-full flex-1 flex-col justify-center gap-2"
-        action={signIn}
+        action="/api/auth/signin"
+        method="post"
       >
+        <input type="hidden" name="locale" value={locale} />
+        {nextPath && <input type="hidden" name="next" value={nextPath} />}
         <Brand />
 
         <Label className="mt-4 text-base" htmlFor="email">
