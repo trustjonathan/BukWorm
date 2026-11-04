@@ -1,6 +1,13 @@
 import { supabase } from "@/lib/supabase/browser-client"
 import { TablesInsert, TablesUpdate } from "@/supabase/types"
 
+export class WorkspaceNotFoundError extends Error {
+  constructor(workspaceId: string) {
+    super(`Workspace ${workspaceId} was not found or is not accessible.`)
+    this.name = "WorkspaceNotFoundError"
+  }
+}
+
 export const getHomeWorkspaceByUserId = async (userId: string) => {
   const { data: homeWorkspace, error } = await supabase
     .from("workspaces")
@@ -21,11 +28,12 @@ export const getWorkspaceById = async (workspaceId: string) => {
     .from("workspaces")
     .select("*")
     .eq("id", workspaceId)
-    .single()
+    .maybeSingle()
 
-  if (!workspace) {
+  if (error) {
     throw new Error(error.message)
   }
+  if (!workspace) throw new WorkspaceNotFoundError(workspaceId)
 
   return workspace
 }

@@ -13,7 +13,11 @@ import { getPromptWorkspacesByWorkspaceId } from "@/db/prompts"
 import { getAssistantImageFromStorage } from "@/db/storage/assistant-images"
 import { getToolWorkspacesByWorkspaceId } from "@/db/tools"
 import { getWorkspaceMemberProfiles } from "@/db/workspace-collaboration"
-import { getWorkspaceById } from "@/db/workspaces"
+import {
+  getHomeWorkspaceByUserId,
+  getWorkspaceById,
+  WorkspaceNotFoundError
+} from "@/db/workspaces"
 import { convertBlobToBase64 } from "@/lib/blob-to-b64"
 import { getDefaultModelId } from "@/lib/models/llm/llm-list"
 import { supabase } from "@/lib/supabase/browser-client"
@@ -174,6 +178,19 @@ export default function WorkspaceLayout({ children }: WorkspaceLayoutProps) {
         })
       } catch (error) {
         if (isCurrent()) {
+          if (error instanceof WorkspaceNotFoundError) {
+            const session = (await supabase.auth.getSession()).data.session
+            if (session) {
+              const homeWorkspaceId = await getHomeWorkspaceByUserId(
+                session.user.id
+              )
+              if (homeWorkspaceId !== workspaceId) {
+                router.replace(`/${homeWorkspaceId}/chat`)
+                return
+              }
+            }
+          }
+
           toast.error(
             error instanceof Error ? error.message : "Failed to load workspace."
           )
@@ -193,6 +210,7 @@ export default function WorkspaceLayout({ children }: WorkspaceLayoutProps) {
       setModels,
       setPresets,
       setPrompts,
+      router,
       setSelectedWorkspace,
       setTools,
       setWorkspaceMembers

@@ -21,7 +21,7 @@ import {
   IconSpy
 } from "@tabler/icons-react"
 import Image from "next/image"
-import { useParams } from "next/navigation"
+import { useParams, useRouter } from "next/navigation"
 import { FC, useContext, useEffect, useState } from "react"
 import { toast } from "sonner"
 import { Button } from "../ui/button"
@@ -36,6 +36,7 @@ export const ChatUI: FC<ChatUIProps> = ({}) => {
   useHotkey("o", () => handleNewChat())
 
   const params = useParams()
+  const router = useRouter()
 
   const {
     chatMessages,
@@ -81,20 +82,25 @@ export const ChatUI: FC<ChatUIProps> = ({}) => {
   const firstName = profile?.display_name.trim().split(/\s+/)[0]
 
   useEffect(() => {
-    const fetchData = async () => {
-      await fetchMessages()
-      await fetchChat()
-
-      scrollToBottom()
-      setIsAtBottom(true)
-    }
-
     if (params.chatid) {
       setIsTemporaryChat(false)
-      fetchData().then(() => {
-        handleFocusChatInput()
-        setLoading(false)
-      })
+      void (async () => {
+        try {
+          const chatExists = await fetchChat()
+          if (!chatExists) return
+
+          await fetchMessages()
+          scrollToBottom()
+          setIsAtBottom(true)
+          handleFocusChatInput()
+        } catch (error) {
+          toast.error(
+            error instanceof Error ? error.message : "Failed to load chat."
+          )
+        } finally {
+          setLoading(false)
+        }
+      })()
     } else {
       setLoading(false)
     }
@@ -335,7 +341,18 @@ export const ChatUI: FC<ChatUIProps> = ({}) => {
 
   const fetchChat = async () => {
     const chat = await getChatById(params.chatid as string)
-    if (!chat) return
+    if (!chat) {
+      router.replace(`/${params.workspaceid}/chat`)
+      return false
+    }
+
+    if (
+      typeof params.workspaceid === "string" &&
+      chat.workspace_id !== params.workspaceid
+    ) {
+      router.replace(`/${chat.workspace_id}/chat/${chat.id}`)
+      return false
+    }
 
     if (chat.assistant_id) {
       const assistant = assistants.find(
@@ -364,6 +381,8 @@ export const ChatUI: FC<ChatUIProps> = ({}) => {
       includeWorkspaceInstructions: chat.include_workspace_instructions,
       embeddingsProvider: "local"
     })
+
+    return true
   }
 
   const handleShareChat = async () => {
