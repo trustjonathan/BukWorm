@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/middleware"
+import { isInvalidAuthSessionError } from "@/lib/supabase/auth-errors"
 import { i18nRouter } from "next-i18n-router"
 import { NextResponse, type NextRequest } from "next/server"
 import i18nConfig from "./i18nConfig"
@@ -20,10 +21,26 @@ export async function middleware(request: NextRequest) {
     request.cookies.get("matrix_show_landing_after_login")?.value === "1"
 
   try {
-    const { supabase, response } = createClient(request)
+    const { supabase, getResponse, clearAuthCookies } = createClient(request)
     const {
-      data: { user }
+      data: { user },
+      error: authError
     } = await supabase.auth.getUser()
+    const invalidSession = isInvalidAuthSessionError(authError)
+
+    if (invalidSession) {
+      console.warn("Clearing an invalid Supabase auth session.")
+      clearAuthCookies()
+    }
+
+    const withAuthCookies = (response: NextResponse) => {
+      getResponse()
+        .cookies.getAll()
+        .forEach(cookie => {
+          response.cookies.set(cookie)
+        })
+      return response
+    }
 
     const pathSegments = request.nextUrl.pathname.split("/").filter(Boolean)
     const locale =
@@ -36,7 +53,12 @@ export async function middleware(request: NextRequest) {
       locale !== null &&
       (pathSegments.length === 0 || pathSegments.length === 1)
 
-    if (user && isLocaleLandingPage && !showLandingAfterLogin) {
+    if (
+      user &&
+      !invalidSession &&
+      isLocaleLandingPage &&
+      !showLandingAfterLogin
+    ) {
       const { data: homeWorkspace } = await supabase
         .from("workspaces")
         .select("id")
@@ -45,14 +67,22 @@ export async function middleware(request: NextRequest) {
         .maybeSingle()
 
       if (homeWorkspace) {
-        return NextResponse.redirect(
-          new URL(`/${locale}/${homeWorkspace.id}/chat`, request.url)
+        return withAuthCookies(
+          NextResponse.redirect(
+            new URL(`/${locale}/${homeWorkspace.id}/chat`, request.url)
+          )
         )
       }
     }
 
-    const middlewareResponse = i18nResult ?? response
-    if (user && showLandingAfterLogin && pathSegments.length === 1 && locale) {
+    const middlewareResponse = withAuthCookies(i18nResult ?? getResponse())
+    if (
+      user &&
+      !invalidSession &&
+      showLandingAfterLogin &&
+      pathSegments.length === 1 &&
+      locale
+    ) {
       middlewareResponse.cookies.set("matrix_show_landing_after_login", "", {
         httpOnly: true,
         sameSite: "lax",

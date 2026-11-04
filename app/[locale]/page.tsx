@@ -1,9 +1,10 @@
-import { IconArrowRight, IconSparkles } from "@tabler/icons-react"
 import { createServerClient } from "@supabase/ssr"
+import { IconArrowRight, IconSparkles } from "@tabler/icons-react"
 import Image from "next/image"
 import Link from "next/link"
 import { cookies } from "next/headers"
 import { redirect } from "next/navigation"
+import { isInvalidAuthSessionError } from "@/lib/supabase/auth-errors"
 import { Database } from "@/supabase/types"
 
 export default async function HomePage({
@@ -30,15 +31,16 @@ export default async function HomePage({
   } = await supabase.auth.getUser()
   const showLandingAfterLogin =
     cookieStore.get("matrix_show_landing_after_login")?.value === "1"
+  const invalidSession = isInvalidAuthSessionError(authError)
 
-  if (authError) {
+  if (authError && !invalidSession) {
     throw new Error(`Could not verify your session: ${authError.message}`)
   }
 
   let chatHref = `/${locale}/login`
   let actionLabel = "Start chatting"
 
-  if (user) {
+  if (user && !invalidSession) {
     const { data: homeWorkspace, error: homeWorkspaceError } = await supabase
       .from("workspaces")
       .select("id")
