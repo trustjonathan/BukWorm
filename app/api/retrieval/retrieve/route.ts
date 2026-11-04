@@ -5,17 +5,65 @@ import { createClient } from "@supabase/supabase-js"
 import OpenAI from "openai"
 
 export async function POST(request: Request) {
-  const json = await request.json()
-  const { userInput, fileIds, embeddingsProvider, sourceCount } = json as {
-    userInput: string
-    fileIds: string[]
-    embeddingsProvider: "openai" | "local"
-    sourceCount: number
-  }
-
-  const uniqueFileIds = [...new Set(fileIds)]
-
   try {
+    let json: unknown
+    try {
+      json = await request.json()
+    } catch {
+      return Response.json(
+        { message: "Request body must be valid JSON." },
+        { status: 400 }
+      )
+    }
+
+    if (!json || typeof json !== "object" || Array.isArray(json)) {
+      return Response.json(
+        { message: "Request body must be a JSON object." },
+        { status: 400 }
+      )
+    }
+
+    const body = json as Record<string, unknown>
+    const { userInput, fileIds, embeddingsProvider, sourceCount } = body
+
+    if (typeof userInput !== "string" || !userInput.trim()) {
+      return Response.json(
+        { message: "A search query is required." },
+        { status: 400 }
+      )
+    }
+    if (
+      !Array.isArray(fileIds) ||
+      fileIds.some(id => typeof id !== "string" || !id.trim())
+    ) {
+      return Response.json(
+        { message: "File IDs must be an array of non-empty strings." },
+        { status: 400 }
+      )
+    }
+    if (embeddingsProvider !== "openai" && embeddingsProvider !== "local") {
+      return Response.json(
+        { message: "A valid embeddings provider is required." },
+        { status: 400 }
+      )
+    }
+    if (
+      typeof sourceCount !== "number" ||
+      !Number.isInteger(sourceCount) ||
+      sourceCount < 1 ||
+      sourceCount > 10
+    ) {
+      return Response.json(
+        { message: "Source count must be between 1 and 10." },
+        { status: 400 }
+      )
+    }
+
+    const uniqueFileIds = [...new Set(fileIds as string[])]
+    if (uniqueFileIds.length === 0) {
+      return Response.json({ results: [] })
+    }
+
     const supabaseAdmin = createClient<Database>(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.SUPABASE_SERVICE_ROLE_KEY!
@@ -64,7 +112,7 @@ export async function POST(request: Request) {
         throw openaiError
       }
 
-      chunks = openaiFileItems
+      chunks = openaiFileItems ?? []
     } else if (embeddingsProvider === "local") {
       const localEmbedding = await generateLocalEmbedding(userInput)
 
@@ -79,21 +127,27 @@ export async function POST(request: Request) {
         throw localFileItemsError
       }
 
-      chunks = localFileItems
+      chunks = localFileItems ?? []
     }
 
-    const mostSimilarChunks = chunks?.sort(
-      (a, b) => b.similarity - a.similarity
-    )
+    const mostSimilarChunks = chunks.sort((a, b) => b.similarity - a.similarity)
 
-    return new Response(JSON.stringify({ results: mostSimilarChunks }), {
-      status: 200
-    })
-  } catch (error: any) {
-    const errorMessage = error.error?.message || "An unexpected error occurred"
-    const errorCode = error.status || 500
-    return new Response(JSON.stringify({ message: errorMessage }), {
-      status: errorCode
-    })
+    return Response.json({ results: mostSimilarChunks })
+  } catch (error) {
+    console.error("Retrieval request failed:", error)
+    const status =
+      typeof error === "object" &&
+      error !== null &&
+      "status" in error &&
+      typeof error.status === "number" &&
+      error.status >= 400 &&
+      error.status < 600
+        ? error.status
+        : 500
+    const message =
+      error instanceof Error && status < 500
+        ? error.message
+        : "Retrieval failed. Please try again."
+    return Response.json({ message }, { status })
   }
 }

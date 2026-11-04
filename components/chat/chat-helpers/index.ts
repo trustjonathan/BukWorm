@@ -58,27 +58,50 @@ export const handleRetrieval = async (
   embeddingsProvider: "openai" | "local",
   sourceCount: number
 ) => {
+  const files = [
+    ...(Array.isArray(newMessageFiles) ? newMessageFiles : []),
+    ...(Array.isArray(chatFiles) ? chatFiles : [])
+  ]
+  const fileIds = Array.from(
+    new Set(
+      files.flatMap(file =>
+        typeof file?.id === "string" && file.id.trim() ? [file.id] : []
+      )
+    )
+  )
+
+  if (typeof userInput !== "string" || !userInput.trim()) {
+    throw new Error("A search query is required for retrieval.")
+  }
+  if (fileIds.length === 0) {
+    return []
+  }
+
   const response = await fetch("/api/retrieval/retrieve", {
     method: "POST",
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       userInput,
-      fileIds: Array.from(
-        new Set([...newMessageFiles, ...chatFiles].map(file => file.id))
-      ),
+      fileIds,
       embeddingsProvider,
       sourceCount
     })
   })
 
+  const payload = (await response.json()) as {
+    results?: Tables<"file_items">[]
+    message?: string
+  }
+
   if (!response.ok) {
-    console.error("Error retrieving:", response)
+    throw new Error(payload.message || "Failed to retrieve relevant files.")
   }
 
-  const { results } = (await response.json()) as {
-    results: Tables<"file_items">[]
+  if (!Array.isArray(payload.results)) {
+    throw new Error("The retrieval service returned an invalid response.")
   }
 
-  return results
+  return payload.results
 }
 
 export const createTempMessages = (
