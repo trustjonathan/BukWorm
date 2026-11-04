@@ -178,6 +178,12 @@
   }
 }
 
+@media (hover: none) {
+  .chat-row[data-active="true"] .chat-row-actions {
+    opacity: 1;
+  }
+}
+
 @keyframes matrix-mark-breathe {
   0%,
   100% {

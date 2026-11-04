@@ -8,20 +8,26 @@ import {
 import { ProfileSettings } from "@/components/utility/profile-settings"
 import { WorkspaceSwitcher } from "@/components/utility/workspace-switcher"
 import { ChatbotUIContext } from "@/context/context"
-import { IconLayoutSidebar, IconMessage, IconPlus } from "@tabler/icons-react"
+import {
+  IconChevronDown,
+  IconLayoutSidebar,
+  IconPlus,
+  IconSearch,
+  IconX
+} from "@tabler/icons-react"
 import Image from "next/image"
 import { useRouter } from "next/navigation"
-import { FC, useContext, useEffect, useState } from "react"
+import { FC, useContext, useEffect, useRef, useState } from "react"
 import { Button } from "../ui/button"
 import { SidebarDataList } from "./sidebar-data-list"
-import { SidebarSearch } from "./sidebar-search"
 import { toast } from "sonner"
+import { Input } from "../ui/input"
 
 interface MatrixSidebarProps {
   onClose?: () => void
 }
 
-const RECENT_CHAT_LIMIT = 10
+const RECENT_CHAT_LIMIT = 8
 
 export const MatrixSidebar: FC<MatrixSidebarProps> = ({ onClose }) => {
   const router = useRouter()
@@ -38,8 +44,14 @@ export const MatrixSidebar: FC<MatrixSidebarProps> = ({ onClose }) => {
 
   const { handleNewChat } = useChatHandler()
   const [searchTerm, setSearchTerm] = useState("")
+  const [isSearchOpen, setIsSearchOpen] = useState(false)
   const [showAllChats, setShowAllChats] = useState(false)
   const [showArchivedChats, setShowArchivedChats] = useState(false)
+  const searchInputRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    if (isSearchOpen) searchInputRef.current?.focus()
+  }, [isSearchOpen])
 
   useEffect(() => {
     if (!profile) return
@@ -132,8 +144,8 @@ export const MatrixSidebar: FC<MatrixSidebarProps> = ({ onClose }) => {
   }
 
   return (
-    <aside className="border-border bg-background text-foreground relative flex h-full w-[280px] shrink-0 flex-col border-r transition-colors">
-      <div className="border-border flex h-14 shrink-0 items-center justify-between border-b px-4">
+    <aside className="border-border bg-background text-foreground relative flex size-full shrink-0 flex-col border-r transition-colors">
+      <div className="flex h-14 shrink-0 items-center justify-between px-3">
         <button
           type="button"
           aria-label="Go to workspace home"
@@ -163,75 +175,80 @@ export const MatrixSidebar: FC<MatrixSidebarProps> = ({ onClose }) => {
           </span>
         </button>
 
+        <div className="flex items-center gap-1">
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            aria-label={isSearchOpen ? "Close chat search" : "Search chats"}
+            title={isSearchOpen ? "Close search" : "Search chats"}
+            className="text-muted-foreground size-9 rounded-full"
+            onClick={() => {
+              if (isSearchOpen) {
+                setSearchTerm("")
+                setIsSearchOpen(false)
+              } else {
+                setIsSearchOpen(true)
+              }
+            }}
+          >
+            {isSearchOpen ? <IconX size={18} /> : <IconSearch size={18} />}
+          </Button>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            aria-label="Collapse sidebar"
+            className="text-muted-foreground size-9 rounded-full"
+            onClick={() => updateSidebarVisibility(false)}
+          >
+            <IconLayoutSidebar size={18} />
+          </Button>
+        </div>
+      </div>
+
+      {isSearchOpen && (
+        <div className="shrink-0 px-3 pb-2">
+          <Input
+            ref={searchInputRef}
+            aria-label="Search chat titles"
+            placeholder="Search chats"
+            value={searchTerm}
+            onChange={event => setSearchTerm(event.target.value)}
+            onKeyDown={event => {
+              if (event.key === "Escape") {
+                event.preventDefault()
+                setSearchTerm("")
+                setIsSearchOpen(false)
+              }
+            }}
+            className="h-10 rounded-lg text-[15px]"
+          />
+        </div>
+      )}
+
+      <nav
+        aria-label="Workspace navigation"
+        className="shrink-0 space-y-0.5 px-3 py-2"
+      >
         <Button
           type="button"
           variant="ghost"
-          size="icon"
-          aria-label="Collapse sidebar"
-          className="text-muted-foreground hover:bg-accent hover:text-accent-foreground focus-visible:ring-ring size-9"
-          onClick={() => updateSidebarVisibility(false)}
-        >
-          <IconLayoutSidebar size={18} />
-        </Button>
-      </div>
-
-      <div className="shrink-0 space-y-2 p-3">
-        <Button
-          type="button"
           onClick={handleCreateNewChat}
-          className="h-9 w-full gap-2"
+          className="h-11 w-full justify-start gap-3 rounded-lg px-3 text-[15px] font-medium"
         >
-          <IconPlus size={16} />
-          New Chat
+          <IconPlus size={19} />
+          New chat
         </Button>
-        <SidebarSearch
-          contentType="chats"
-          searchTerm={searchTerm}
-          setSearchTerm={setSearchTerm}
-        />
-      </div>
-
-      <div className="border-border flex shrink-0 items-center gap-1.5 border-y px-3 py-2">
-        <div className="min-w-0 flex-1">
+        <div className="[&_[data-sidebar-workspace-trigger]]:h-11">
           <WorkspaceSwitcher onNavigate={closeOnMobileNavigation} />
         </div>
-      </div>
+      </nav>
 
       <section
         aria-label="Recent chats"
         className="flex min-h-0 flex-1 flex-col overflow-hidden"
       >
-        <div className="flex shrink-0 items-center justify-between px-4 pb-1 pt-3">
-          <h2 className="text-muted-foreground flex items-center gap-2 text-xs font-semibold uppercase tracking-wide">
-            <IconMessage size={15} />
-            {showArchivedChats ? "Archived" : "Recents"}
-          </h2>
-          <div className="flex items-center gap-2">
-            <Button
-              type="button"
-              variant="link"
-              size="sm"
-              className="h-8 px-1 text-xs"
-              onClick={() => {
-                setShowArchivedChats(value => !value)
-                setShowAllChats(false)
-              }}
-            >
-              {showArchivedChats ? "Active" : "Archived"}
-            </Button>
-            {!normalizedSearch && visibleChats.length > RECENT_CHAT_LIMIT && (
-              <Button
-                type="button"
-                variant="link"
-                size="sm"
-                className="h-8 px-1 text-xs"
-                onClick={() => setShowAllChats(value => !value)}
-              >
-                {showAllChats ? "Show recent" : "View all"}
-              </Button>
-            )}
-          </div>
-        </div>
         <div className="min-h-0 flex-1 overflow-y-auto px-2 pb-2">
           <SidebarDataList
             contentType="chats"
@@ -241,11 +258,33 @@ export const MatrixSidebar: FC<MatrixSidebarProps> = ({ onClose }) => {
             onNavigate={closeOnMobileNavigation}
             searchTerm={normalizedSearch}
           />
+          {!normalizedSearch && visibleChats.length > RECENT_CHAT_LIMIT && (
+            <Button
+              type="button"
+              variant="ghost"
+              className="text-muted-foreground mt-1 h-10 w-full justify-start rounded-lg px-3 text-sm"
+              onClick={() => setShowAllChats(value => !value)}
+            >
+              {showAllChats ? "Show fewer" : "See all..."}
+              <IconChevronDown
+                size={16}
+                className={`ml-auto transition-transform ${
+                  showAllChats ? "rotate-180" : ""
+                }`}
+              />
+            </Button>
+          )}
         </div>
       </section>
 
       <div className="border-border mt-auto shrink-0 border-t p-2">
-        <ProfileSettings />
+        <ProfileSettings
+          onShowArchived={() => {
+            setShowArchivedChats(value => !value)
+            setShowAllChats(true)
+          }}
+          isShowingArchived={showArchivedChats}
+        />
       </div>
     </aside>
   )

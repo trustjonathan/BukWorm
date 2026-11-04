@@ -118,7 +118,7 @@ export const Dashboard: FC<DashboardProps> = ({ children }) => {
 
   return (
     <div
-      className="flex size-full overflow-hidden bg-slate-50 text-slate-900 transition-colors dark:bg-[#070a13] dark:text-slate-100"
+      className="bg-background text-foreground flex size-full overflow-hidden transition-colors"
       onTouchStart={handleTouchStart}
       onTouchEnd={handleTouchEnd}
       onTouchCancel={handleTouchCancel}
@@ -129,7 +129,7 @@ export const Dashboard: FC<DashboardProps> = ({ children }) => {
         <button
           type="button"
           aria-label="Close sidebar"
-          className="fixed inset-0 z-40 bg-slate-900/60 backdrop-blur-sm lg:hidden"
+          className="fixed inset-0 z-40 bg-black/40 lg:hidden"
           onClick={() => setSidebarVisible(false)}
         />
       )}

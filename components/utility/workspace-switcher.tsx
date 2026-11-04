@@ -22,11 +22,11 @@ import { Tables } from "@/supabase/types"
 import {
   IconArchive,
   IconBuilding,
+  IconChevronDown,
   IconHome,
   IconPlus,
   IconStar
 } from "@tabler/icons-react"
-import { IconSelector } from "@tabler/icons-react"
 import Image from "next/image"
 import { useRouter } from "next/navigation"
 import { FC, useContext, useEffect, useState } from "react"
@@ -286,46 +286,28 @@ export const WorkspaceSwitcher: FC<WorkspaceSwitcherProps> = ({
     )
   }
 
-  const workspaceImage = workspaceImages.find(
-    image => image.workspaceId === selectedWorkspace?.id
-  )
-  const imageSrc = workspaceImage
-    ? workspaceImage.url
-    : selectedWorkspace?.is_home
-      ? ""
-      : ""
-
   const IconComponent = selectedWorkspace?.is_home ? IconHome : IconBuilding
 
   return (
     <>
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger
-          className="border-input flex h-[36px]
-        w-full cursor-pointer items-center justify-between rounded-md border px-2 py-1 hover:opacity-50"
+          data-sidebar-workspace-trigger
+          className="hover:bg-accent focus-visible:ring-ring flex h-11 w-full cursor-pointer items-center justify-between rounded-lg px-3 text-left text-[15px] outline-none focus-visible:ring-2"
         >
           <div className="flex items-center truncate">
             {selectedWorkspace && (
-              <div className="flex items-center">
-                {workspaceImage ? (
-                  <Image
-                    style={{ width: "22px", height: "22px" }}
-                    className="mr-2 rounded"
-                    src={imageSrc}
-                    width={22}
-                    height={22}
-                    alt={selectedWorkspace.name}
-                  />
-                ) : (
-                  <IconComponent className="mb-0.5 mr-2" size={22} />
-                )}
-              </div>
+              <IconComponent className="mr-3 shrink-0" size={19} />
             )}
-
-            {getWorkspaceName(value) || "Select workspace..."}
+            <span className="truncate">
+              {getWorkspaceName(value) || "Select workspace..."}
+            </span>
           </div>
 
-          <IconSelector className="ml-2 shrink-0 opacity-50" />
+          <IconChevronDown
+            className="text-muted-foreground ml-2 shrink-0"
+            size={16}
+          />
         </PopoverTrigger>
 
         <PopoverContent className="p-2">

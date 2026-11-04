@@ -1,22 +1,17 @@
-import { ModelIcon } from "@/components/models/model-icon"
 import { ChatbotUIContext } from "@/context/context"
 import { saveChatPreference } from "@/db/workspace-collaboration"
 import { updateChat } from "@/db/chats"
-import { LLM_LIST } from "@/lib/models/llm/llm-list"
 import { cn } from "@/lib/utils"
 import { Tables } from "@/supabase/types"
-import { LLM } from "@/types"
 import {
   IconArchive,
   IconArrowRight,
   IconDotsVertical,
   IconFolder,
   IconFolderOff,
-  IconRobotFace,
   IconShare,
   IconStar
 } from "@tabler/icons-react"
-import Image from "next/image"
 import { useParams, useRouter } from "next/navigation"
 import { FC, useContext, useState } from "react"
 import { toast } from "sonner"
@@ -53,10 +48,7 @@ export const ChatItem: FC<ChatItemProps> = ({ chat, folders, onNavigate }) => {
     setChatPreferences,
     setChats,
     setSelectedWorkspace,
-    setIsTemporaryChat,
-    availableLocalModels,
-    assistantImages,
-    availableOpenRouterModels
+    setIsTemporaryChat
   } = useContext(ChatbotUIContext)
 
   const router = useRouter()
@@ -183,50 +175,23 @@ export const ChatItem: FC<ChatItemProps> = ({ chat, folders, onNavigate }) => {
     }
   }
 
-  const MODEL_DATA = [
-    ...LLM_LIST,
-    ...availableLocalModels,
-    ...availableOpenRouterModels
-  ].find(llm => llm.modelId === chat.model) as LLM
-
-  const assistantImage = assistantImages.find(
-    image => image.assistantId === chat.assistant_id
-  )?.base64
-
   return (
-    <div className="group flex min-w-0 items-center">
+    <div
+      className="chat-row group/chat-row flex min-w-0 items-center"
+      data-active={isActive ? "true" : "false"}
+    >
       <Button
         type="button"
         variant="ghost"
         aria-current={isActive ? "page" : undefined}
         className={cn(
-          "hover:bg-accent h-auto min-h-9 min-w-0 flex-1 justify-start gap-3 rounded-md px-2 py-1.5 text-left hover:opacity-100 focus-visible:ring-2",
-          isActive && "bg-accent"
+          "hover:bg-muted h-11 min-w-0 flex-1 justify-start rounded-lg px-3 text-left text-[15px] font-normal focus-visible:ring-2",
+          isActive && "bg-muted"
         )}
         onClick={handleClick}
         title={chat.name}
       >
-        {chat.assistant_id ? (
-          assistantImage ? (
-            <Image
-              className="size-7 shrink-0 rounded object-cover"
-              src={assistantImage}
-              alt=""
-              width={28}
-              height={28}
-            />
-          ) : (
-            <IconRobotFace className="bg-primary text-secondary border-primary size-7 shrink-0 rounded border p-1" />
-          )
-        ) : (
-          <span title={MODEL_DATA?.modelName}>
-            <ModelIcon provider={MODEL_DATA?.provider} height={28} width={28} />
-          </span>
-        )}
-
-        <span className="min-w-0 flex-1 truncate text-sm font-medium">
-          {chat.name}
-        </span>
+        <span className="min-w-0 flex-1 truncate">{chat.name}</span>
       </Button>
 
       <DropdownMenu>
@@ -235,7 +200,7 @@ export const ChatItem: FC<ChatItemProps> = ({ chat, folders, onNavigate }) => {
             type="button"
             variant="ghost"
             size="icon"
-            className="ml-1 size-9 shrink-0"
+            className="chat-row-actions size-9 shrink-0 opacity-0 focus-visible:opacity-100 focus-visible:ring-2 group-focus-within/chat-row:opacity-100 group-hover/chat-row:opacity-100"
             aria-label={`More actions for ${chat.name}`}
             title="More actions"
           >

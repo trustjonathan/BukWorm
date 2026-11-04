@@ -21,7 +21,6 @@ import {
   DropdownMenuLabel,
   DropdownMenuTrigger
 } from "../ui/dropdown-menu"
-import { Separator } from "../ui/separator"
 import { AssistantItem } from "./items/assistants/assistant-item"
 import { ChatItem } from "./items/chat/chat-item"
 import { CollectionItem } from "./items/collections/collection-item"
@@ -338,7 +337,7 @@ export const SidebarDataList: FC<SidebarDataListProps> = ({
           <div
             className={`h-full ${
               isOverflowing ? "w-[calc(100%-8px)]" : "w-full"
-            } space-y-2 pt-2 ${isOverflowing ? "mr-2" : ""}`}
+            } space-y-3 pt-1 ${isOverflowing ? "mr-2" : ""}`}
           >
             {folders.map(folder => (
               <Folder
@@ -352,8 +351,6 @@ export const SidebarDataList: FC<SidebarDataListProps> = ({
                   .map(item => renderDataItem(item as DataItemType))}
               </Folder>
             ))}
-
-            {folders.length > 0 && <Separator />}
 
             {contentType === "chats" ? (
               <>
@@ -371,7 +368,7 @@ export const SidebarDataList: FC<SidebarDataListProps> = ({
                     return (
                       sortedData.length > 0 && (
                         <div key={dateCategory} className="pb-2">
-                          <div className="text-muted-foreground mb-1 text-sm font-bold">
+                          <div className="text-muted-foreground mb-1 px-3 text-xs font-normal">
                             {dateCategory}
                           </div>
 

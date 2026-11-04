@@ -17,6 +17,7 @@ import { OpenRouterLLM } from "@/types"
 import {
   IconCircleCheckFilled,
   IconCircleXFilled,
+  IconArchive,
   IconFileDownload,
   IconChevronDown,
   IconLoader2,
@@ -97,9 +98,15 @@ const isLibraryType = (tab: string | null): tab is LibraryType =>
   tab === "tools" ||
   tab === "models"
 
-interface ProfileSettingsProps {}
+interface ProfileSettingsProps {
+  onShowArchived?: () => void
+  isShowingArchived?: boolean
+}
 
-export const ProfileSettings: FC<ProfileSettingsProps> = ({}) => {
+export const ProfileSettings: FC<ProfileSettingsProps> = ({
+  onShowArchived,
+  isShowingArchived = false
+}) => {
   const {
     profile,
     setProfile,
@@ -495,6 +502,18 @@ export const ProfileSettings: FC<ProfileSettingsProps> = ({}) => {
               Theme
             </button>
           </DropdownMenuItem>
+          {onShowArchived && (
+            <DropdownMenuItem asChild>
+              <button
+                type="button"
+                className="flex min-h-9 w-full items-center text-left"
+                onClick={onShowArchived}
+              >
+                <IconArchive className="mr-2" size={16} />
+                {isShowingArchived ? "Active chats" : "Archived"}
+              </button>
+            </DropdownMenuItem>
+          )}
           <DropdownMenuItem asChild>
             <button
               type="button"
