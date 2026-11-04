@@ -28,10 +28,15 @@ export default async function HomePage({
     data: { user },
     error: authError
   } = await supabase.auth.getUser()
+  const showLandingAfterLogin =
+    cookieStore.get("matrix_show_landing_after_login")?.value === "1"
 
   if (authError) {
     throw new Error(`Could not verify your session: ${authError.message}`)
   }
+
+  let chatHref = `/${locale}/login`
+  let actionLabel = "Start chatting"
 
   if (user) {
     const { data: homeWorkspace, error: homeWorkspaceError } = await supabase
@@ -47,29 +52,36 @@ export default async function HomePage({
       )
     }
 
-    if (homeWorkspace) {
-      redirect(`/${locale}/${homeWorkspace.id}/chat`)
+    let workspaceId = homeWorkspace?.id
+
+    if (!workspaceId) {
+      const { data: workspace, error: workspaceError } = await supabase
+        .from("workspaces")
+        .select("id")
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: true })
+        .limit(1)
+        .maybeSingle()
+
+      if (workspaceError) {
+        throw new Error(
+          `Could not load your workspace: ${workspaceError.message}`
+        )
+      }
+
+      workspaceId = workspace?.id
     }
 
-    const { data: workspace, error: workspaceError } = await supabase
-      .from("workspaces")
-      .select("id")
-      .eq("user_id", user.id)
-      .order("created_at", { ascending: true })
-      .limit(1)
-      .maybeSingle()
-
-    if (workspaceError) {
-      throw new Error(
-        `Could not load your workspace: ${workspaceError.message}`
-      )
+    if (!workspaceId) {
+      redirect(`/${locale}/setup`)
     }
 
-    if (workspace) {
-      redirect(`/${locale}/${workspace.id}/chat`)
+    if (!showLandingAfterLogin) {
+      redirect(`/${locale}/${workspaceId}/chat`)
     }
 
-    redirect(`/${locale}/setup`)
+    chatHref = `/${locale}/${workspaceId}/chat`
+    actionLabel = "Continue chatting"
   }
 
   return (
@@ -108,9 +120,9 @@ export default async function HomePage({
 
         <Link
           className="bg-primary text-primary-foreground hover:bg-primary/90 focus-visible:ring-ring mt-8 inline-flex min-h-10 items-center gap-2 rounded-md px-6 py-2 text-sm font-medium shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
-          href={`/${locale}/login`}
+          href={chatHref}
         >
-          Start chatting
+          {actionLabel}
           <IconArrowRight />
         </Link>
       </div>

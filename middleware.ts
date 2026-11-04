@@ -16,6 +16,8 @@ export async function middleware(request: NextRequest) {
   }
 
   const i18nResult = i18nRouter(request, i18nConfig)
+  const showLandingAfterLogin =
+    request.cookies.get("matrix_show_landing_after_login")?.value === "1"
 
   try {
     const { supabase, response } = createClient(request)
@@ -34,7 +36,7 @@ export async function middleware(request: NextRequest) {
       locale !== null &&
       (pathSegments.length === 0 || pathSegments.length === 1)
 
-    if (user && isLocaleLandingPage) {
+    if (user && isLocaleLandingPage && !showLandingAfterLogin) {
       const { data: homeWorkspace } = await supabase
         .from("workspaces")
         .select("id")
@@ -49,7 +51,18 @@ export async function middleware(request: NextRequest) {
       }
     }
 
-    return i18nResult ?? response
+    const middlewareResponse = i18nResult ?? response
+    if (user && showLandingAfterLogin && pathSegments.length === 1 && locale) {
+      middlewareResponse.cookies.set("matrix_show_landing_after_login", "", {
+        httpOnly: true,
+        sameSite: "lax",
+        secure: process.env.NODE_ENV === "production",
+        path: "/",
+        maxAge: 0
+      })
+    }
+
+    return middlewareResponse
   } catch (e) {
     console.error("Locale landing redirect failed:", e)
     return i18nResult ?? NextResponse.next()

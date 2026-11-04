@@ -15,9 +15,11 @@ export const metadata: Metadata = {
 }
 
 export default async function Login({
-  searchParams
+  searchParams,
+  params: { locale }
 }: {
   searchParams: { message?: string; next?: string }
+  params: { locale: string }
 }) {
   const requestedNext = searchParams.next
   const nextPath =
@@ -127,7 +129,15 @@ export default async function Login({
       )
     }
 
-    return redirect(`/${homeWorkspace.id}/chat`)
+    cookieStore.set("matrix_show_landing_after_login", "1", {
+      httpOnly: true,
+      sameSite: "lax",
+      secure: process.env.NODE_ENV === "production",
+      path: "/",
+      maxAge: 120
+    })
+
+    return redirect(`/${locale}`)
   }
 
   const getEnvVarOrEdgeConfigValue = async (name: string) => {

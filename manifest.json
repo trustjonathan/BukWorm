@@ -7,19 +7,26 @@
       "src": "/icon-192x192.png",
       "type": "image/png",
       "sizes": "192x192",
-      "purpose": "any maskable"
+      "purpose": "any"
     },
     {
       "src": "/icon-512x512.png",
       "type": "image/png",
       "sizes": "512x512",
-      "purpose": "any maskable"
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-transparent-512.png",
+      "type": "image/png",
+      "sizes": "512x512",
+      "purpose": "maskable"
     }
   ],
-  "start_url": "/https://bukworm.onrender.com/",
+  "start_url": "/",
+  "scope": "/",
   "display": "standalone",
-  "theme_color": "#0f172a",
-  "background_color": "#020617",
+  "theme_color": "#121315",
+  "background_color": "#121315",
   "lang": "en",
   "display_override": [
     "browser",

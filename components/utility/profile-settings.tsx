@@ -273,10 +273,22 @@ export const ProfileSettings: FC<ProfileSettingsProps> = ({
   useHotkey("/", () => openChatControl("help"))
 
   const handleSignOut = async () => {
-    await supabase.auth.signOut()
-    router.push("/login")
-    router.refresh()
-    return
+    try {
+      const { error } = await supabase.auth.signOut()
+      if (error) throw error
+
+      const response = await fetch("/api/auth/logout", { method: "POST" })
+      const result = (await response.json()) as { message?: string }
+
+      if (!response.ok) {
+        throw new Error(result.message || "Could not log out.")
+      }
+
+      router.replace("/")
+      router.refresh()
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not log out.")
+    }
   }
 
   const handleSave = async () => {

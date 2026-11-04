@@ -9,19 +9,19 @@
   "background_color": "#121315",
   "icons": [
     {
-      "src": "/icons/matrix-192.png",
+      "src": "/icon-192x192.png",
       "type": "image/png",
       "sizes": "192x192",
       "purpose": "any"
     },
     {
-      "src": "/icons/matrix-512.png",
+      "src": "/icon-512x512.png",
       "type": "image/png",
       "sizes": "512x512",
       "purpose": "any"
     },
     {
-      "src": "/icons/matrix-maskable-512.png",
+      "src": "/icon-transparent-512.png",
       "type": "image/png",
       "sizes": "512x512",
       "purpose": "maskable"
