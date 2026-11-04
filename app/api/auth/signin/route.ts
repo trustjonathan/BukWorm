@@ -25,14 +25,24 @@ export async function POST(request: NextRequest) {
     requestedNext.startsWith("/") &&
     !requestedNext.startsWith("//") &&
     !requestedNext.includes("\\")
-      ? requestedNext
+      ? (() => {
+          const url = new URL(requestedNext, "https://matrix.invalid")
+          return url.origin === "https://matrix.invalid"
+            ? `${url.pathname}${url.search}${url.hash}`
+            : null
+        })()
       : null
   const loginUrl = (message: string) => {
-    const url = new URL(`/${locale}/login`, request.url)
-    url.searchParams.set("message", message)
-    if (nextPath) url.searchParams.set("next", nextPath)
-    return url
+    const params = new URLSearchParams({ message })
+    if (nextPath) params.set("next", nextPath)
+    return `/${locale}/login?${params.toString()}`
   }
+
+  const redirect = (path: string) =>
+    new NextResponse(null, {
+      status: 303,
+      headers: { Location: path }
+    })
 
   if (
     typeof emailValue !== "string" ||
@@ -40,10 +50,7 @@ export async function POST(request: NextRequest) {
     typeof passwordValue !== "string" ||
     !passwordValue
   ) {
-    return NextResponse.redirect(
-      loginUrl("Enter your email and password to sign in."),
-      303
-    )
+    return redirect(loginUrl("Enter your email and password to sign in."))
   }
 
   const pendingCookies: PendingCookie[] = []
@@ -72,7 +79,7 @@ export async function POST(request: NextRequest) {
     password: passwordValue
   })
 
-  let destination: URL
+  let destination: string
 
   if (error) {
     destination = loginUrl(error.message)
@@ -88,14 +95,11 @@ export async function POST(request: NextRequest) {
         `Could not load your profile: ${profileError.message}`
       )
     } else if (!profile?.default_model) {
-      destination = new URL(
-        nextPath
-          ? `/${locale}/setup?next=${encodeURIComponent(nextPath)}`
-          : `/${locale}/setup`,
-        request.url
-      )
+      destination = nextPath
+        ? `/${locale}/setup?next=${encodeURIComponent(nextPath)}`
+        : `/${locale}/setup`
     } else if (nextPath) {
-      destination = new URL(nextPath, request.url)
+      destination = nextPath
     } else {
       const { data: homeWorkspace, error: workspaceError } = await supabase
         .from("workspaces")
@@ -109,9 +113,9 @@ export async function POST(request: NextRequest) {
           `Could not load your workspace: ${workspaceError.message}`
         )
       } else if (!homeWorkspace) {
-        destination = new URL(`/${locale}/setup`, request.url)
+        destination = `/${locale}/setup`
       } else {
-        destination = new URL(`/${locale}`, request.url)
+        destination = `/${locale}`
         pendingCookies.push({
           name: "matrix_show_landing_after_login",
           value: "1",
@@ -127,7 +131,7 @@ export async function POST(request: NextRequest) {
     }
   }
 
-  const response = NextResponse.redirect(destination, 303)
+  const response = redirect(destination)
   pendingCookies.forEach(({ name, value, options }) => {
     response.cookies.set(name, value, options)
   })
