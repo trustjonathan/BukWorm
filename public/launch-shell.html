@@ -55,6 +55,7 @@
         justify-items: center;
         gap: 1.5rem;
         text-align: center;
+        animation: shell-enter 320ms ease both;
       }
 
       .mark {
@@ -112,6 +113,17 @@
         to {
           visibility: visible;
           opacity: 1;
+        }
+      }
+
+      @keyframes shell-enter {
+        from {
+          opacity: 0;
+          transform: translateY(8px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
         }
       }
 

@@ -30,11 +30,20 @@ import {
   useRef,
   useState
 } from "react"
-import Loading from "../loading"
 import { toast } from "sonner"
 
 interface WorkspaceLayoutProps {
   children: ReactNode
+}
+
+const setAppLoadingState = (loading: boolean) => {
+  if (loading) {
+    document.documentElement.dataset.matrixAppLoading = "true"
+    window.dispatchEvent(new Event("matrix:app-loading"))
+  } else {
+    delete document.documentElement.dataset.matrixAppLoading
+    window.dispatchEvent(new Event("matrix:app-ready"))
+  }
 }
 
 export default function WorkspaceLayout({ children }: WorkspaceLayoutProps) {
@@ -200,7 +209,10 @@ export default function WorkspaceLayout({ children }: WorkspaceLayoutProps) {
           )
         }
       } finally {
-        if (isCurrent()) setLoading(false)
+        if (isCurrent()) {
+          setLoading(false)
+          setAppLoadingState(false)
+        }
       }
     },
     [
@@ -237,11 +249,14 @@ export default function WorkspaceLayout({ children }: WorkspaceLayoutProps) {
     setWorkspaceMembers([])
 
     const loadWorkspace = async () => {
+      setAppLoadingState(true)
+
       try {
         const session = (await supabase.auth.getSession()).data.session
 
         if (!isCurrent) return
         if (!session) {
+          setAppLoadingState(false)
           router.push("/login")
           return
         }
@@ -253,6 +268,7 @@ export default function WorkspaceLayout({ children }: WorkspaceLayoutProps) {
             error instanceof Error ? error.message : "Failed to load session."
           )
           setLoading(false)
+          setAppLoadingState(false)
         }
       }
     }
@@ -261,6 +277,7 @@ export default function WorkspaceLayout({ children }: WorkspaceLayoutProps) {
 
     return () => {
       isCurrent = false
+      setAppLoadingState(false)
     }
   }, [
     fetchWorkspaceData,
@@ -279,9 +296,5 @@ export default function WorkspaceLayout({ children }: WorkspaceLayoutProps) {
     workspaceId
   ])
 
-  if (loading) {
-    return <Loading />
-  }
-
-  return <Dashboard>{children}</Dashboard>
+  return loading ? null : <Dashboard>{children}</Dashboard>
 }

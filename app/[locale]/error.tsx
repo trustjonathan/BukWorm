@@ -14,5 +14,5 @@ export default function LocaleError({
     console.error("Matrix page failed to render:", error)
   }, [error])
 
-  return <LaunchScreen autoDismiss={false} error onRetry={reset} />
+  return <LaunchScreen error onRetry={reset} />
 }

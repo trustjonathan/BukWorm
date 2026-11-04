@@ -29,8 +29,6 @@ export default async function HomePage({
     data: { user },
     error: authError
   } = await supabase.auth.getUser()
-  const showLandingAfterLogin =
-    cookieStore.get("matrix_show_landing_after_login")?.value === "1"
   const invalidSession = isInvalidAuthSessionError(authError)
 
   if (authError && !invalidSession) {
@@ -78,12 +76,7 @@ export default async function HomePage({
       redirect(`/${locale}/setup`)
     }
 
-    if (!showLandingAfterLogin) {
-      redirect(`/${locale}/${workspaceId}/chat`)
-    }
-
-    chatHref = `/${locale}/${workspaceId}/chat`
-    actionLabel = "Continue chatting"
+    redirect(`/${locale}/${workspaceId}/chat`)
   }
 
   return (

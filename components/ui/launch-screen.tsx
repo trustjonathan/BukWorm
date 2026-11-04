@@ -3,37 +3,100 @@
 import { useEffect, useState } from "react"
 
 interface LaunchScreenProps {
-  autoDismiss?: boolean
+  active?: boolean
+  delayMs?: number
   error?: boolean
+  listenForAppReadiness?: boolean
   onRetry?: () => void
 }
 
+const LAUNCH_DELAY_MS = 900
+
 export function LaunchScreen({
-  autoDismiss = true,
+  active = true,
+  delayMs = LAUNCH_DELAY_MS,
   error = false,
+  listenForAppReadiness = false,
   onRetry
 }: LaunchScreenProps) {
   const [leaving, setLeaving] = useState(false)
-  const [visible, setVisible] = useState(true)
+  const [visible, setVisible] = useState(error)
+  const [isActive, setIsActive] = useState(active)
+  const [showDelayed, setShowDelayed] = useState(false)
+  const [showRetry, setShowRetry] = useState(false)
 
   useEffect(() => {
-    if (!autoDismiss) return
+    setIsActive(active)
+  }, [active])
 
-    const frame = window.requestAnimationFrame(() => setLeaving(true))
-    const timeout = window.setTimeout(() => setVisible(false), 240)
+  useEffect(() => {
+    if (!listenForAppReadiness) return
+
+    const showLoading = () => setIsActive(true)
+    const finishLoading = () => setIsActive(false)
+    window.addEventListener("matrix:app-loading", showLoading)
+    window.addEventListener("matrix:app-ready", finishLoading)
+    if (document.documentElement.dataset.matrixAppLoading === "true") {
+      setIsActive(true)
+    }
 
     return () => {
-      window.cancelAnimationFrame(frame)
-      window.clearTimeout(timeout)
+      window.removeEventListener("matrix:app-loading", showLoading)
+      window.removeEventListener("matrix:app-ready", finishLoading)
     }
-  }, [autoDismiss])
+  }, [listenForAppReadiness])
 
-  if (!visible) return null
+  useEffect(() => {
+    if (error || !isActive) {
+      setShowDelayed(false)
+      setShowRetry(false)
+      return
+    }
+
+    setShowDelayed(false)
+    setShowRetry(false)
+    const delayedTimeout = window.setTimeout(() => setShowDelayed(true), 6000)
+    const retryTimeout = window.setTimeout(() => setShowRetry(true), 15000)
+
+    return () => {
+      window.clearTimeout(delayedTimeout)
+      window.clearTimeout(retryTimeout)
+    }
+  }, [error, isActive])
+
+  useEffect(() => {
+    if (error) {
+      setVisible(true)
+      setLeaving(false)
+      return
+    }
+
+    let hideTimeout: number | undefined
+    if (!isActive) {
+      if (visible) {
+        setLeaving(true)
+        hideTimeout = window.setTimeout(() => setVisible(false), 260)
+      }
+
+      return () => {
+        if (hideTimeout !== undefined) window.clearTimeout(hideTimeout)
+      }
+    }
+
+    setLeaving(false)
+    const showTimeout = window.setTimeout(() => setVisible(true), delayMs)
+
+    return () => {
+      window.clearTimeout(showTimeout)
+      if (hideTimeout !== undefined) window.clearTimeout(hideTimeout)
+    }
+  }, [delayMs, error, isActive, visible])
 
   return (
     <div
       className="matrix-launch-screen"
-      data-state={leaving ? "leaving" : "visible"}
+      data-state={!visible ? "hidden" : leaving ? "leaving" : "visible"}
+      aria-hidden={!visible || leaving}
       role={error ? "alert" : "status"}
       aria-live={error ? "assertive" : "polite"}
       aria-label={error ? "Matrix AI could not load" : "Loading Matrix AI"}
@@ -63,17 +126,21 @@ export function LaunchScreen({
         ) : (
           <>
             <p className="matrix-launch-status">
-              <span className="matrix-launch-delayed">
-                Taking longer than usual...
-              </span>
+              {showDelayed && (
+                <span className="matrix-launch-delayed">
+                  Taking longer than usual...
+                </span>
+              )}
             </p>
-            <button
-              className="matrix-launch-retry matrix-launch-actions"
-              onClick={() => window.location.reload()}
-              type="button"
-            >
-              Retry
-            </button>
+            {showRetry && (
+              <button
+                className="matrix-launch-retry matrix-launch-actions"
+                onClick={() => window.location.reload()}
+                type="button"
+              >
+                Retry
+              </button>
+            )}
           </>
         )}
       </div>

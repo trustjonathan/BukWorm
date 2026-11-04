@@ -115,18 +115,7 @@ export async function POST(request: NextRequest) {
       } else if (!homeWorkspace) {
         destination = `/${locale}/setup`
       } else {
-        destination = `/${locale}`
-        pendingCookies.push({
-          name: "matrix_show_landing_after_login",
-          value: "1",
-          options: {
-            httpOnly: true,
-            sameSite: "lax",
-            secure: process.env.NODE_ENV === "production",
-            path: "/",
-            maxAge: 120
-          }
-        })
+        destination = `/${locale}/${homeWorkspace.id}/chat`
       }
     }
   }

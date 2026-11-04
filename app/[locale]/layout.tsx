@@ -137,7 +137,7 @@ export default async function RootLayout({
         <script dangerouslySetInnerHTML={{ __html: THEME_BOOTSTRAP_SCRIPT }} />
       </head>
       <body className={inter.variable}>
-        <LaunchScreen />
+        <LaunchScreen active={false} listenForAppReadiness />
         <ServiceWorkerRegistration />
         <Providers attribute="class" defaultTheme="system">
           <TranslationsProvider

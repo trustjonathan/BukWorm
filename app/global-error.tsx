@@ -20,7 +20,7 @@ export default function GlobalError({
         <style dangerouslySetInnerHTML={{ __html: LAUNCH_CRITICAL_CSS }} />
       </head>
       <body>
-        <LaunchScreen autoDismiss={false} error />
+        <LaunchScreen error />
       </body>
     </html>
   )

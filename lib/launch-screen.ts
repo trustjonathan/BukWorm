@@ -15,8 +15,8 @@ body {
   min-height: 100vh;
   min-height: 100dvh;
 }
-html:has(.matrix-launch-screen),
-body:has(.matrix-launch-screen) {
+html:has(.matrix-launch-screen:not([data-state="hidden"])),
+body:has(.matrix-launch-screen:not([data-state="hidden"])) {
   overflow: hidden;
   overscroll-behavior: none;
 }
@@ -31,12 +31,25 @@ body:has(.matrix-launch-screen) {
   color: #f1f5f9;
   font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   text-align: center;
+  opacity: 0;
+  transition: opacity 260ms ease;
+  will-change: opacity;
+}
+.matrix-launch-screen[data-state="hidden"] {
+  visibility: hidden;
+  pointer-events: none;
+}
+.matrix-launch-screen[data-state="visible"] {
   opacity: 1;
-  transition: opacity 200ms ease;
 }
 .matrix-launch-screen[data-state="leaving"] {
   pointer-events: none;
   opacity: 0;
+}
+@media (prefers-reduced-motion: reduce) {
+  .matrix-launch-screen {
+    will-change: auto;
+  }
 }
 .matrix-launch-screen .matrix-launch-content {
   display: grid;
@@ -59,15 +72,9 @@ body:has(.matrix-launch-screen) {
   font-size: 0.9375rem;
   line-height: 1.5;
 }
-.matrix-launch-screen .matrix-launch-delayed {
-  visibility: hidden;
-  opacity: 0;
-  animation: matrix-launch-reveal 0s 6s forwards;
-}
+.matrix-launch-screen .matrix-launch-delayed,
 .matrix-launch-screen .matrix-launch-actions {
-  visibility: hidden;
-  opacity: 0;
-  animation: matrix-launch-reveal 0s 15s forwards;
+  animation: matrix-launch-reveal 220ms ease both;
 }
 .matrix-launch-screen .matrix-launch-retry {
   min-height: 2.75rem;
@@ -89,7 +96,8 @@ body:has(.matrix-launch-screen) {
   50% { opacity: 1; transform: scale(1.03); }
 }
 @keyframes matrix-launch-reveal {
-  to { visibility: visible; opacity: 1; }
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 @media (prefers-reduced-motion: reduce) {
   .matrix-launch-screen *,
