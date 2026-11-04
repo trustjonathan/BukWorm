@@ -10,7 +10,6 @@ import { WorkspaceSwitcher } from "@/components/utility/workspace-switcher"
 import { ChatbotUIContext } from "@/context/context"
 import {
   IconChevronDown,
-  IconLayoutSidebar,
   IconPlus,
   IconSearch,
   IconX
@@ -133,16 +132,6 @@ export const MatrixSidebar: FC<MatrixSidebarProps> = ({ onClose }) => {
     closeOnMobileNavigation()
   }
 
-  const updateSidebarVisibility = (visible: boolean) => {
-    if (onClose && !visible) {
-      onClose()
-      return
-    }
-
-    setShowSidebar(visible)
-    localStorage.setItem("showSidebar", String(visible))
-  }
-
   return (
     <aside className="border-border bg-background text-foreground relative flex size-full shrink-0 flex-col border-r transition-colors">
       <div className="flex h-14 shrink-0 items-center justify-between px-3">
@@ -194,16 +183,19 @@ export const MatrixSidebar: FC<MatrixSidebarProps> = ({ onClose }) => {
           >
             {isSearchOpen ? <IconX size={18} /> : <IconSearch size={18} />}
           </Button>
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            aria-label="Collapse sidebar"
-            className="text-muted-foreground size-9 rounded-full"
-            onClick={() => updateSidebarVisibility(false)}
-          >
-            <IconLayoutSidebar size={18} />
-          </Button>
+          {onClose && (
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              aria-label="Close sidebar"
+              title="Close sidebar"
+              className="text-muted-foreground size-9 rounded-full lg:hidden"
+              onClick={onClose}
+            >
+              <IconX size={18} />
+            </Button>
+          )}
         </div>
       </div>
 

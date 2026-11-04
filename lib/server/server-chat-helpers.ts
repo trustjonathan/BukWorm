@@ -18,11 +18,9 @@ interface GetServerProfileOptions {
   includeEnvironmentKeys?: boolean
 }
 
-export async function getServerProfile({
-  includeEnvironmentKeys = true
-}: GetServerProfileOptions = {}) {
+export function createServerSupabaseClient() {
   const cookieStore = cookies()
-  const supabase = createServerClient<Database>(
+  return createServerClient<Database>(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
@@ -33,6 +31,12 @@ export async function getServerProfile({
       }
     }
   )
+}
+
+export async function getServerProfile({
+  includeEnvironmentKeys = true
+}: GetServerProfileOptions = {}) {
+  const supabase = createServerSupabaseClient()
 
   const user = (await supabase.auth.getUser()).data.user
   if (!user) {

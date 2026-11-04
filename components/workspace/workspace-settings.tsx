@@ -85,7 +85,11 @@ export const WorkspaceSettings: FC<WorkspaceSettingsProps> = ({
     includeWorkspaceInstructions:
       selectedWorkspace?.include_workspace_instructions ?? true,
     embeddingsProvider:
-      selectedWorkspace?.embeddings_provider === "openai" ? "openai" : "local"
+      selectedWorkspace?.embeddings_provider === "openai"
+        ? "openai"
+        : selectedWorkspace?.embeddings_provider === "google"
+          ? "google"
+          : "local"
   })
 
   useEffect(() => {
@@ -108,7 +112,11 @@ export const WorkspaceSettings: FC<WorkspaceSettingsProps> = ({
       includeWorkspaceInstructions:
         selectedWorkspace?.include_workspace_instructions ?? true,
       embeddingsProvider:
-        selectedWorkspace?.embeddings_provider === "openai" ? "openai" : "local"
+        selectedWorkspace?.embeddings_provider === "openai"
+          ? "openai"
+          : selectedWorkspace?.embeddings_provider === "google"
+            ? "google"
+            : "local"
     })
   }, [selectedWorkspace, profile?.default_model])
 

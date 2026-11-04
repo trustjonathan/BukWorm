@@ -129,7 +129,10 @@ export const useChatHandler = () => {
         includeProfileContext: selectedAssistant.include_profile_context,
         includeWorkspaceInstructions:
           selectedAssistant.include_workspace_instructions,
-        embeddingsProvider: "local"
+        embeddingsProvider: selectedWorkspace.embeddings_provider as
+          | "google"
+          | "openai"
+          | "local"
       })
 
       let allFiles = []
@@ -173,7 +176,10 @@ export const useChatHandler = () => {
         includeProfileContext: selectedPreset.include_profile_context,
         includeWorkspaceInstructions:
           selectedPreset.include_workspace_instructions,
-        embeddingsProvider: "local"
+        embeddingsProvider: selectedWorkspace.embeddings_provider as
+          | "google"
+          | "openai"
+          | "local"
       })
     } else {
       setChatSettings({
@@ -193,8 +199,10 @@ export const useChatHandler = () => {
         includeWorkspaceInstructions:
           selectedWorkspace.include_workspace_instructions ?? true,
         embeddingsProvider:
-          (selectedWorkspace.embeddings_provider as "openai" | "local") ||
-          "local"
+          (selectedWorkspace.embeddings_provider as
+            | "google"
+            | "openai"
+            | "local") || "google"
       })
     }
 

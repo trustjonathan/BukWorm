@@ -1,4 +1,5 @@
 import { generateLocalEmbedding } from "@/lib/generate-local-embedding"
+import { generateGoogleEmbeddings } from "@/lib/generate-google-embeddings"
 import { processDocX } from "@/lib/retrieval/processing"
 import { checkApiKey, getServerProfile } from "@/lib/server/server-chat-helpers"
 import { Database } from "@/supabase/types"
@@ -12,7 +13,7 @@ export async function POST(req: Request) {
   const { text, fileId, embeddingsProvider, fileExtension } = json as {
     text: string
     fileId: string
-    embeddingsProvider: "openai" | "local"
+    embeddingsProvider: "google" | "openai" | "local"
     fileExtension: string
   }
 
@@ -30,6 +31,14 @@ export async function POST(req: Request) {
       } else {
         checkApiKey(profile.openai_api_key, "OpenAI")
       }
+    } else if (
+      embeddingsProvider === "google" &&
+      !profile.google_gemini_api_key
+    ) {
+      return Response.json(
+        { message: "AI is not configured for file search." },
+        { status: 503 }
+      )
     }
 
     let chunks: FileItemChunk[] = []
@@ -44,9 +53,15 @@ export async function POST(req: Request) {
         })
     }
 
-    let embeddings: any = []
+    let embeddings: Array<number[] | null> = []
 
-    if (embeddingsProvider === "openai") {
+    if (embeddingsProvider === "google") {
+      embeddings = await generateGoogleEmbeddings(
+        chunks.map(chunk => chunk.content),
+        profile.google_gemini_api_key!,
+        "RETRIEVAL_DOCUMENT"
+      )
+    } else if (embeddingsProvider === "openai") {
       const openai = profile.use_azure_openai
         ? new OpenAI({
             apiKey: profile.azure_openai_api_key || "",
@@ -92,6 +107,10 @@ export async function POST(req: Request) {
       local_embedding:
         embeddingsProvider === "local"
           ? ((embeddings[index] || null) as any)
+          : null,
+      google_embedding:
+        embeddingsProvider === "google"
+          ? JSON.stringify(embeddings[index])
           : null
     }))
 

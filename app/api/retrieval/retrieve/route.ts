@@ -1,5 +1,10 @@
 import { generateLocalEmbedding } from "@/lib/generate-local-embedding"
-import { checkApiKey, getServerProfile } from "@/lib/server/server-chat-helpers"
+import { generateGoogleEmbeddings } from "@/lib/generate-google-embeddings"
+import {
+  checkApiKey,
+  createServerSupabaseClient,
+  getServerProfile
+} from "@/lib/server/server-chat-helpers"
 import { Database } from "@/supabase/types"
 import { createClient } from "@supabase/supabase-js"
 import OpenAI from "openai"
@@ -41,7 +46,11 @@ export async function POST(request: Request) {
         { status: 400 }
       )
     }
-    if (embeddingsProvider !== "openai" && embeddingsProvider !== "local") {
+    if (
+      embeddingsProvider !== "google" &&
+      embeddingsProvider !== "openai" &&
+      embeddingsProvider !== "local"
+    ) {
       return Response.json(
         { message: "A valid embeddings provider is required." },
         { status: 400 }
@@ -84,6 +93,13 @@ export async function POST(request: Request) {
 
     const profile = await getServerProfile()
 
+    if (embeddingsProvider === "google" && !profile.google_gemini_api_key) {
+      return Response.json(
+        { message: "AI is not configured for file search." },
+        { status: 503 }
+      )
+    }
+
     if (embeddingsProvider === "openai") {
       if (profile.use_azure_openai) {
         checkApiKey(profile.azure_openai_api_key, "Azure OpenAI")
@@ -92,9 +108,70 @@ export async function POST(request: Request) {
       }
     }
 
-    let chunks: any[] = []
+    let chunks: Array<{
+      id: string
+      file_id: string
+      content: string
+      tokens: number
+      similarity: number
+    }> = []
 
-    if (embeddingsProvider === "openai") {
+    if (embeddingsProvider === "google") {
+      const supabaseUser = createServerSupabaseClient()
+      const { data: accessibleFiles, error: filesError } = await supabaseUser
+        .from("files")
+        .select("id")
+        .in("id", uniqueFileIds)
+
+      if (filesError) throw filesError
+
+      const accessibleFileIds = (accessibleFiles ?? []).map(file => file.id)
+      if (accessibleFileIds.length === 0) {
+        return Response.json({ results: [] })
+      }
+
+      const { data: missingEmbeddings, error: missingEmbeddingsError } =
+        await supabaseUser
+          .from("file_items")
+          .select("*")
+          .in("file_id", accessibleFileIds)
+          .is("google_embedding", null)
+
+      if (missingEmbeddingsError) throw missingEmbeddingsError
+
+      if (missingEmbeddings?.length) {
+        const documentEmbeddings = await generateGoogleEmbeddings(
+          missingEmbeddings.map(item => item.content),
+          profile.google_gemini_api_key!,
+          "RETRIEVAL_DOCUMENT"
+        )
+        const reindexedItems = missingEmbeddings.map((item, index) => ({
+          ...item,
+          google_embedding: JSON.stringify(documentEmbeddings[index])
+        }))
+        const { error: reindexError } = await supabaseAdmin
+          .from("file_items")
+          .upsert(reindexedItems, { onConflict: "id" })
+
+        if (reindexError) throw reindexError
+      }
+
+      const [googleEmbedding] = await generateGoogleEmbeddings(
+        [userInput],
+        profile.google_gemini_api_key!,
+        "RETRIEVAL_QUERY"
+      )
+
+      const { data: googleFileItems, error: googleError } =
+        await supabaseAdmin.rpc("match_file_items_google", {
+          query_embedding: JSON.stringify(googleEmbedding),
+          match_count: sourceCount,
+          file_ids: accessibleFileIds
+        })
+
+      if (googleError) throw googleError
+      chunks = googleFileItems ?? []
+    } else if (embeddingsProvider === "openai") {
       const openai = profile.use_azure_openai
         ? new OpenAI({
             apiKey: profile.azure_openai_api_key || "",

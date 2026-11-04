@@ -379,7 +379,8 @@ export const ChatUI: FC<ChatUIProps> = ({}) => {
       contextLength: Math.min(chat.context_length, 32768),
       includeProfileContext: chat.include_profile_context,
       includeWorkspaceInstructions: chat.include_workspace_instructions,
-      embeddingsProvider: "local"
+      embeddingsProvider:
+        (chat.embeddings_provider as "google" | "openai" | "local") || "google"
     })
 
     return true

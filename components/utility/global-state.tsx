@@ -100,7 +100,7 @@ export const GlobalState: FC<GlobalStateProps> = ({ children }) => {
     contextLength: 4000,
     includeProfileContext: true,
     includeWorkspaceInstructions: true,
-    embeddingsProvider: "local"
+    embeddingsProvider: "google"
   })
   const [selectedNexusAgents, setSelectedNexusAgents] = useState<
     NexusAgentId[]

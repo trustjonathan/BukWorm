@@ -567,6 +567,7 @@ export type Database = {
           content: string
           created_at: string
           file_id: string
+          google_embedding: string | null
           id: string
           local_embedding: string | null
           openai_embedding: string | null
@@ -579,6 +580,7 @@ export type Database = {
           content: string
           created_at?: string
           file_id: string
+          google_embedding?: string | null
           id?: string
           local_embedding?: string | null
           openai_embedding?: string | null
@@ -591,6 +593,7 @@ export type Database = {
           content?: string
           created_at?: string
           file_id?: string
+          google_embedding?: string | null
           id?: string
           local_embedding?: string | null
           openai_embedding?: string | null
@@ -1749,6 +1752,20 @@ export type Database = {
         }[]
       }
       match_file_items_openai: {
+        Args: {
+          query_embedding: string
+          match_count?: number
+          file_ids?: string[]
+        }
+        Returns: {
+          id: string
+          file_id: string
+          content: string
+          tokens: number
+          similarity: number
+        }[]
+      }
+      match_file_items_google: {
         Args: {
           query_embedding: string
           match_count?: number

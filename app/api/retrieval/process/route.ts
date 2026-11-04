@@ -1,4 +1,5 @@
 import { generateLocalEmbedding } from "@/lib/generate-local-embedding"
+import { generateGoogleEmbeddings } from "@/lib/generate-google-embeddings"
 import {
   processCSV,
   processJSON,
@@ -71,6 +72,14 @@ export async function POST(req: Request) {
           ", make sure it is configured or else use local embeddings"
         throw error
       }
+    } else if (
+      embeddingsProvider === "google" &&
+      !profile.google_gemini_api_key
+    ) {
+      return Response.json(
+        { message: "AI is not configured for file search." },
+        { status: 503 }
+      )
     }
 
     let chunks: FileItemChunk[] = []
@@ -97,9 +106,15 @@ export async function POST(req: Request) {
         })
     }
 
-    let embeddings: any = []
+    let embeddings: Array<number[] | null> = []
 
-    if (embeddingsProvider === "openai") {
+    if (embeddingsProvider === "google") {
+      embeddings = await generateGoogleEmbeddings(
+        chunks.map(chunk => chunk.content),
+        profile.google_gemini_api_key!,
+        "RETRIEVAL_DOCUMENT"
+      )
+    } else if (embeddingsProvider === "openai") {
       const openai = profile.use_azure_openai
         ? new OpenAI({
             apiKey: profile.azure_openai_api_key || "",
@@ -146,6 +161,10 @@ export async function POST(req: Request) {
       local_embedding:
         embeddingsProvider === "local"
           ? ((embeddings[index] || null) as any)
+          : null,
+      google_embedding:
+        embeddingsProvider === "google"
+          ? JSON.stringify(embeddings[index])
           : null
     }))
 

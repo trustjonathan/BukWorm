@@ -132,7 +132,11 @@ export const QuickSettings: FC<QuickSettingsProps> = ({
           includeProfileContext: selectedWorkspace.include_profile_context,
           includeWorkspaceInstructions:
             selectedWorkspace.include_workspace_instructions,
-          embeddingsProvider: "local"
+          embeddingsProvider:
+            (selectedWorkspace?.embeddings_provider as
+              | "google"
+              | "openai"
+              | "local") || "google"
         })
       }
       return
@@ -147,7 +151,13 @@ export const QuickSettings: FC<QuickSettingsProps> = ({
       contextLength: Math.min(item.context_length, 32768),
       includeProfileContext: item.include_profile_context,
       includeWorkspaceInstructions: item.include_workspace_instructions,
-      embeddingsProvider: "local"
+      embeddingsProvider:
+        (item.embeddings_provider as "google" | "openai" | "local") ||
+        (selectedWorkspace?.embeddings_provider as
+          | "google"
+          | "openai"
+          | "local") ||
+        "google"
     })
   }
 

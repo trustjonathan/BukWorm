@@ -174,7 +174,11 @@ export default function WorkspaceLayout({ children }: WorkspaceLayoutProps) {
           includeWorkspaceInstructions:
             workspace.include_workspace_instructions ?? true,
           embeddingsProvider:
-            workspace.embeddings_provider === "openai" ? "openai" : "local"
+            workspace.embeddings_provider === "openai"
+              ? "openai"
+              : workspace.embeddings_provider === "google"
+                ? "google"
+                : "local"
         })
       } catch (error) {
         if (isCurrent()) {
