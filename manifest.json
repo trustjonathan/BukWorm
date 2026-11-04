@@ -1,0 +1,31 @@
+{
+  "short_name": "Matrix AI",
+  "name": "Matrix AI",
+  "description": "Your intelligent workspace, reading companion, and reasoning assistant — powered by Matrix.",
+  "icons": [
+    {
+      "src": "/icon-192x192.png",
+      "type": "image/png",
+      "sizes": "192x192",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon-512x512.png",
+      "type": "image/png",
+      "sizes": "512x512",
+      "purpose": "any maskable"
+    }
+  ],
+  "start_url": "/https://bukworm.onrender.com/",
+  "display": "standalone",
+  "theme_color": "#0f172a",
+  "background_color": "#020617",
+  "lang": "en",
+  "display_override": [
+    "browser",
+    "fullscreen",
+    "standalone",
+    "window-controls-overlay",
+    "minimal-ui"
+  ]
+}
