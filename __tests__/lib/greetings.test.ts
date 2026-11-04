@@ -1,6 +1,6 @@
 /** @jest-environment node */
 
-import { getRandomGreeting } from "@/lib/greetings"
+import { getRandomGreeting, greetings } from "@/lib/greetings"
 
 describe("getRandomGreeting", () => {
   it.each([
@@ -18,7 +18,6 @@ describe("getRandomGreeting", () => {
 
     expect(greeting).toContain("Jonathan")
     expect(greeting).not.toContain("{name}")
-    expect(greeting).not.toMatch(/still up/i)
   })
 
   it("uses a friendly fallback when the display name is missing", () => {
@@ -33,5 +32,20 @@ describe("getRandomGreeting", () => {
     expect(getRandomGreeting("Jonathan", morning, () => 0)).not.toBe(
       getRandomGreeting("Jonathan", morning, () => 0.99)
     )
+  })
+
+  it("includes the requested late-night greetings in the random pool", () => {
+    const lateNightPoolSize = greetings.any.length + greetings.lateNight.length
+    const stillUpIndex =
+      greetings.any.length +
+      greetings.lateNight.indexOf("Still up, {name}? Let's make it count.")
+
+    expect(
+      getRandomGreeting(
+        "Jonathan",
+        new Date(2026, 10, 4, 23),
+        () => (stillUpIndex + 0.1) / lateNightPoolSize
+      )
+    ).toBe("Still up, Jonathan? Let's make it count.")
   })
 })

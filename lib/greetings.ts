@@ -1,4 +1,26 @@
-const GREETINGS = {
+export const greetings = {
+  any: [
+    "Hey {name}, what's on your mind?",
+    "Good to see you, {name}.",
+    "Ask away, {name}.",
+    "What are we figuring out today, {name}?",
+    "Hi {name}. Got a question?",
+    "Back again, {name}. Let's get into it.",
+    "Take a pause, bring a question, {name}.",
+    "Hey there, {name}. Ready when you are.",
+    "What shall we work on, {name}?",
+    "Welcome back, {name}.",
+    "Got something tricky? Bring it here, {name}.",
+    "Let's think it through together, {name}.",
+    "Your move, {name}.",
+    "Curious about something, {name}?",
+    "Pull up a chair, {name}.",
+    "Hey {name}, how can I help?",
+    "Fresh page, {name}. What's first?",
+    "Good to have you here, {name}.",
+    "Let's make something happen, {name}.",
+    "Anything on your mind, {name}?"
+  ],
   morning: [
     "Good morning, {name}",
     "Morning, {name}!",
@@ -19,7 +41,12 @@ const GREETINGS = {
     "A fresh cup of possibility, anyone?",
     "Morning light, open mind",
     "Here’s to a thoughtful start",
-    "What are we learning today?"
+    "What are we learning today?",
+    "Good morning, {name}. What's first on the list?",
+    "Morning, {name}. Fresh start, fresh questions.",
+    "Rise and think, {name}.",
+    "Morning, {name}. Coffee and questions?",
+    "A new day, {name}. What shall we tackle?"
   ],
   afternoon: [
     "Good afternoon, {name}",
@@ -41,7 +68,12 @@ const GREETINGS = {
     "Your afternoon brainstorm starts here",
     "A moment to think, make, or discover",
     "What are we figuring out this afternoon?",
-    "Midday momentum looks good on you"
+    "Midday momentum looks good on you",
+    "Good afternoon, {name}. How's the day going?",
+    "Afternoon, {name}. What can I help with?",
+    "Midday check-in, {name}. What's up?",
+    "Hey {name}, still going strong?",
+    "Afternoon, {name}. Let's keep it moving."
   ],
   evening: [
     "Good evening, {name}",
@@ -63,9 +95,14 @@ const GREETINGS = {
     "Let’s close the day with a good question",
     "Evening calm, curious mind",
     "What would make tonight interesting?",
-    "Your next idea can start whenever you’re ready"
+    "Your next idea can start whenever you’re ready",
+    "Good evening, {name}. What's on your mind?",
+    "Evening, {name}. Let's wrap something up.",
+    "Hey {name}, winding down or gearing up?",
+    "Evening, {name}. One more question?",
+    "Quiet hour, {name}. Good time to think."
   ],
-  night: [
+  lateNight: [
     "A warm welcome to the quiet hours, {name}",
     "Hello, night owl {name}",
     "A little moonlit curiosity, {name}?",
@@ -85,7 +122,12 @@ const GREETINGS = {
     "Quiet hours, curious thoughts",
     "What would you like to discover tonight?",
     "A soft landing for a big question",
-    "The moon approves of asking questions"
+    "The moon approves of asking questions",
+    "Still up, {name}? Let's make it count.",
+    "Late-night thinking, {name}?",
+    "Burning the midnight oil, {name}?",
+    "Hey {name}, don't forget to rest too.",
+    "Night owl mode, {name}. What's up?"
   ]
 } as const
 
@@ -102,9 +144,9 @@ export function getRandomGreeting(
         ? "afternoon"
         : hour >= 17 && hour < 22
           ? "evening"
-          : "night"
-  const greetings = GREETINGS[timeOfDay]
-  const greeting = greetings[Math.floor(random() * greetings.length)]
+          : "lateNight"
+  const greetingPool = [...greetings.any, ...greetings[timeOfDay]]
+  const greeting = greetingPool[Math.floor(random() * greetingPool.length)]
   const firstName = displayName?.trim().split(/\s+/)[0]
 
   return greeting.replace("{name}", firstName || "there")
