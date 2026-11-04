@@ -66,7 +66,7 @@ const GREETINGS = {
     "Your next idea can start whenever you’re ready"
   ],
   night: [
-    "Good night-time thinking, {name}",
+    "A warm welcome to the quiet hours, {name}",
     "Hello, night owl {name}",
     "A little moonlit curiosity, {name}?",
     "Welcome to the after-hours idea lounge, {name}",
