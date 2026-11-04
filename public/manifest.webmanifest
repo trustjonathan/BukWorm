@@ -1,0 +1,30 @@
+{
+  "name": "Matrix AI",
+  "short_name": "Matrix AI",
+  "description": "Your intelligent workspace, reading companion, and reasoning assistant - powered by Matrix.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "theme_color": "#0e121b",
+  "background_color": "#f8fafc",
+  "icons": [
+    {
+      "src": "/icons/matrix-192.png",
+      "type": "image/png",
+      "sizes": "192x192",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/matrix-512.png",
+      "type": "image/png",
+      "sizes": "512x512",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/matrix-maskable-512.png",
+      "type": "image/png",
+      "sizes": "512x512",
+      "purpose": "maskable"
+    }
+  ]
+}

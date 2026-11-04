@@ -54,11 +54,14 @@ export const metadata: Metadata = {
       }
     ]
   },
-  manifest: "/manifest.json",
+  manifest: "/manifest.webmanifest",
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
     title: APP_DEFAULT_TITLE
+  },
+  other: {
+    "mobile-web-app-capable": "yes"
   },
   formatDetection: {
     telephone: false
@@ -93,8 +96,8 @@ export const metadata: Metadata = {
 
 export const viewport: Viewport = {
   themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#eff6ff" },
-    { media: "(prefers-color-scheme: dark)", color: "#080d1a" }
+    { media: "(prefers-color-scheme: light)", color: "#f8fafc" },
+    { media: "(prefers-color-scheme: dark)", color: "#0e121b" }
   ]
 }
 

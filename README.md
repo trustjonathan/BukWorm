@@ -4,6 +4,23 @@ BukWorm is a Gemini-powered AI workspace built on the open-source Chatbot UI pro
 
 <img src="./public/readme/screenshot.png" alt="BukWorm" width="600">
 
+## Installable PWA and Android TWA
+
+The web app is configured as an installable Progressive Web App. Deploy it over
+HTTPS so browsers can register the service worker and install it. Its offline
+fallback is a static page; API requests and authenticated/dynamic pages are
+always network-only and are not stored in Workbox runtime caches. The default
+locale is included in URLs (for example, `/en`) so the `/` install entry
+resolves through locale routing.
+
+To package the site as an Android Trusted Web Activity (TWA), use PWABuilder to
+create the Android package, then replace the package name and SHA-256 signing
+certificate fingerprint placeholders in
+[`public/.well-known/assetlinks.json`](./public/.well-known/assetlinks.json)
+with the values PWABuilder provides. Deploy that file at
+`https://<your-domain>/.well-known/assetlinks.json` and confirm it is publicly
+accessible before publishing the TWA.
+
 Gemini Flash-Lite is the default chat model. Set `GOOGLE_GEMINI_API_KEY` in
 `.env.local` to provide Gemini access for the workspace, or configure a
 personal Gemini key in Profile Settings.
