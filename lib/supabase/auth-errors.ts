@@ -4,7 +4,8 @@ type AuthErrorWithMessage = {
 
 const invalidSessionMessages = [
   "invalid claim: missing sub claim",
-  "session from session_id claim in jwt does not exist"
+  "session from session_id claim in jwt does not exist",
+  "invalid refresh token"
 ]
 
 export function isInvalidAuthSessionError(
